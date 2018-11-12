@@ -1,0 +1,8 @@
+Parameter;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc
+lower_bound;8;0.01;0.1;0;0.1;0;2
+upper_bound;12;2;0.8;1;0.9;12;15
+A02;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc
+A03;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc
+B01;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc
+B02;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc
+B03;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc
