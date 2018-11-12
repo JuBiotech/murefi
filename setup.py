@@ -20,8 +20,8 @@ setuptools.setup(name = __packagename__,
         packages = setuptools.find_packages(), # this must be the same as the name above
         version=__version__,
         description='Package for fitting multiple replicates of a bioprocess dataset.',
-        url='https://gitlab.com/lhelleckes/ode_parameter_fitting',
-        download_url = 'https://gitlab.com/diginbio/bletl/tarball/%s' % __version__,
+        url='https://gitlab.com/lhelleckes/murefi',
+        #download_url = 'https://gitlab.com/diginbio/bletl/tarball/%s' % __version__,
         author='Laura Marie Helleckes',
         author_email='laurahelleckes@gmail.com',
         copyright='(c) 2018 Forschungszentrum Jülich GmbH',
@@ -33,7 +33,9 @@ setuptools.setup(name = __packagename__,
             'Intended Audience :: Developers'
         ],
         install_requires=[
-            'pandas'
+            'pandas',
+            'numpy',
+            'scipy'
         ]
 )
 
