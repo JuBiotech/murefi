@@ -1,0 +1,13 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.ipynb_checkpoints
+/.vs
+murefi/__pycache__/parameter_mapping.cpython-36.pyc
+*.pyc
+murefi.egg-info/dependency_links.txt
+murefi.egg-info/PKG-INFO
+murefi.egg-info/requires.txt
+murefi.egg-info/SOURCES.txt
+murefi.egg-info/top_level.txt
