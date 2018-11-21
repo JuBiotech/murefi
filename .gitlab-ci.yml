@@ -8,5 +8,6 @@ python-test:
   image: python:3.6
   script:
     - cd murefi
+    - python setup.py develop
     - cd tests
     - python -m unittest -v
