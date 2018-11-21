@@ -1,10 +1,9 @@
-import collections
 import abc
+import collections
 import logging
-logger = logging.getLogger(__name__)
 import numpy
-from . PDF import logp_normal
-
+import scipy.stats
+logger = logging.getLogger(__name__)
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
@@ -101,7 +100,7 @@ class Replicate(collections.OrderedDict):
         assert len(y_hat) == n_hat
         assert numpy.isscalar(y_hat_std) or len(y_hat_std) == n_hat
         y_obs = ts_obs.y
-        # slice y_hat and y_std to only those for which y_obs exists
+        # slice y_hat and y_hat_std to only those for which y_obs exists
         y_hat = y_hat[self.get_observation_booleans(ts_obs.ykey).get(ts_obs.ykey)]
         if not numpy.isscalar(y_hat_std):
             y_hat_std = y_hat_std[self.get_observation_booleans(ts_obs.ykey).get(ts_obs.ykey)]
@@ -121,7 +120,7 @@ class Replicate(collections.OrderedDict):
         y_hat_std = prediction.error_normal(ts_hat.ykey, ts_hat.y)
         y_hat, y_hat_std, y_obs = prediction.comparable_timeseries(ts_hat.x, ts_hat.y, y_hat_std, ts_obs)
         # return the likelihood of the observations given the simulation
-        return numpy.sum(logp_normal(mu=y_hat, sd=y_hat_std, x=y_obs))
+        return numpy.sum(numpy.log(scipy.stats.norm.pdf(loc=y_hat, scale=y_hat_std, x=y_obs)))
 
     @staticmethod
     def loglikelihood(data, prediction) -> float:

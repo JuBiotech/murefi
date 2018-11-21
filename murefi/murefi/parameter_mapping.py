@@ -1,16 +1,19 @@
+import numpy
 import pandas
 import pathlib
-import numpy
+
 
 class ParameterMapping(object):
     def __init__(self, path: pathlib.Path):
-        """ Function to map all the parameters provided by the user as csv file
+        """ Class to map process parameters and bounds from a csv file.
+        
+        The purpose of this class is to map all the parameters provided by the user as a csv file
         to dictionaries and arrays with the user input, the extracted fitting parameters
         and the bounds.
-        The column names (first row) of the csv files are fixed to 'Parameter', 'S_0', 'X_0', 'mue_max', 'K_S',
-        'Y_XS', 't_lag' and 't_acc'. The user can either type in a number if the value should be
-        fixed or an arbitrary name if the parameter should be fitted.
-        In the 'Parameter' column, 'lower_bound' and 'upper_bound' specify the bounds for the fit.
+        The column names (first row) of the csv files must be 'Parameter', 'S_0', 'X_0', 'mue_max', 'K_S',
+        'Y_XS', 't_lag' and 't_acc' to allow for the correct readout. For each parameter and well, the user 
+        can either type in a number if the value should be fixed or an arbitrary name if the parameter should
+        be fitted. In the column named 'Parameter', 'lower_bound' and 'upper_bound' specify the bounds for the fit.
         The other entries in the columns specify the wells the user wishes to use for the parameter estimation (format: 'A01').
                 
         Return:
@@ -23,6 +26,8 @@ class ParameterMapping(object):
         """
         
         parameters = pandas.read_csv(path, delimiter = ';')
+        if not 'Parameter' in parameters.columns:
+            raise ValueError('The parameter mapping CSV must call its first column "Parameter"')
         parameters = parameters.set_index('Parameter')
         parameters = parameters.T
         

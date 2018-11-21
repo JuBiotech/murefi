@@ -4,6 +4,7 @@ import pathlib
 import bletl
 from murefi import ParameterMapping, get_tau_sd, logp_normal, Timeseries, Replicate, Dataset
 
+
 class ParameterMapTest(unittest.TestCase):
     def test_fitpars_bounds(self):
         testfile = pathlib.Path('ParTest.csv')
@@ -33,24 +34,6 @@ class ParameterMapTest(unittest.TestCase):
         self.assertEqual(actual, expected)
         return
 
-class PDFTest(unittest.TestCase):
-    def test_get_tau_sd1(self):
-        with self.assertRaises(Exception) as context:
-            get_tau_sd(1,2)
-        self.assertTrue("Can't pass both tau and sd" in str(context.exception))
-        return
-    
-    def test_get_tau_sd2(self):
-        actual = get_tau_sd (sd = 5)
-        expected = (0.04, 5.0)
-        self.assertEqual(actual, expected)
-        return
-    
-    def test_logp_normal(self):
-        actual = logp_normal(mu=1, sd=5, x =1)
-        expected = numpy.log(1/(numpy.sqrt(2*numpy.pi*5**2)))
-        self.assertEqual(actual, expected)
-        return
     
 def create_dataset_object(bletl_data, par_dic):
     '''Function to create a dataset object for all replicates

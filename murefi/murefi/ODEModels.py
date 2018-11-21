@@ -1,8 +1,9 @@
-from . datatypes import Replicate, Timeseries, Dataset
-from . parameter_mapping import ParameterMapping
 import abc
 import numpy
 import scipy.integrate
+from . datatypes import Replicate, Timeseries, Dataset
+from . parameter_mapping import ParameterMapping
+
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
@@ -127,8 +128,6 @@ class BaseODEModel(object):
             data = replicates
             Prediction[replicate_key] = self.predict_replicate(theta, data)
         return Prediction
-    
- 
     
     
 class MonodModel(BaseODEModel):
