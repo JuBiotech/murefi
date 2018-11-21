@@ -1,6 +1,7 @@
 stages:
+  - build
   - test
-
+  - release
 
 python-test:
   stage: test
@@ -9,5 +10,3 @@ python-test:
     - cd murefi
     - cd tests
     - python -m unittest -v
-
-
