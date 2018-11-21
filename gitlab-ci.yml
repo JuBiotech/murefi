@@ -1,0 +1,13 @@
+stages:
+  - test
+
+
+python-test:
+  stage: test
+  image: python:3.6
+  script:
+    - cd murefi
+    - cd tests
+    - python -m unittest -v
+
+
