@@ -19,8 +19,8 @@ __version__ = get_version()
 setuptools.setup(name = __packagename__,
         packages = setuptools.find_packages(), # this must be the same as the name above
         version=__version__,
-        description='Package for fitting multiple replicates of a bioprocess dataset.',
-        url='https://gitlab.com/lhelleckes/murefi',
+        description='Package for fitting of multiple replicates of a bioprocess dataset.',
+        url='https://gitlab.com/diginbio-fzj/murefi',
         #download_url = 'https://gitlab.com/diginbio/bletl/tarball/%s' % __version__,
         author='Laura Marie Helleckes',
         author_email='laurahelleckes@gmail.com',
@@ -38,6 +38,3 @@ setuptools.setup(name = __packagename__,
             'scipy'
         ]
 )
-
-# activate mySandbox
-# python setup.py develop
