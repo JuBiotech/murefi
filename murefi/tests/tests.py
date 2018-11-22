@@ -2,7 +2,7 @@ import unittest
 import numpy
 import pathlib
 import bletl
-from murefi import ParameterMapping, get_tau_sd, logp_normal, Timeseries, Replicate, Dataset
+from murefi import ParameterMapping, Timeseries, Replicate, Dataset
 
 
 class ParameterMapTest(unittest.TestCase):
