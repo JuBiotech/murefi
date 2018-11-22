@@ -1,6 +1,6 @@
 import abc
 import numpy
-import scipy.otimize
+import scipy.optimize
 
 class ErrorModel(object):
     """ A parent class providing the general structure of an error model.
