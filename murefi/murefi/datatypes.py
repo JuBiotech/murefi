@@ -7,28 +7,22 @@ logger = logging.getLogger(__name__)
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
-    def __init__(self, ykey:str, x, y, y_std=None):
+    def __init__(self, ykey:str, x, y):
         """Bundles [x] and [y] into a timeseries.
         Args:
             ykey (str): symbol of the dependent variable (no . characters allowed)
             x (list or ndarray): timepoints
             y (list of ndarray): observations (same length as x)
-            y_std (None/scalar/list/ndarray): normal standard deviation of observing the timeseries
         """
         assert isinstance(ykey, str)
         assert isinstance(x, (list, numpy.ndarray))
         assert isinstance(y, (list, numpy.ndarray))
         assert len(x) == len(y), 'x and y must have the same length.'
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
-        if y_std is not None:
-            if not numpy.isscalar(y_std):
-                assert isinstance(y_std, (list, numpy.ndarray))
-                assert len(y) == len(y_std), 'y and y_std must have the same length.'
 
         self.ykey = ykey
         self.x = numpy.array(x)
         self.y = numpy.array(y)
-        self.y_std = numpy.array(y_std) if y_std is not None else None
         return super().__init__()
 
     def __len__(self):
