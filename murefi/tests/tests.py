@@ -9,7 +9,7 @@ class ParameterMapTest(unittest.TestCase):
     def test_fitpars_bounds(self):
         testfile = pathlib.Path('ParTest.csv')
         actual = ParameterMapping(testfile).fitpars_bounds
-        expected = {'test1A': ('1','2'), 'test1B': ('1','2'), 'test2C': ('1','2'), 'test2D': ('3','4')}
+        expected = {'test1A': (1,2), 'test1B': (1,2), 'test2C': (1,2), 'test2D': (3,4)}
         self.assertDictEqual(actual, expected)
         return
     
@@ -30,7 +30,7 @@ class ParameterMapTest(unittest.TestCase):
     def test_bounds_list(self):
         testfile = pathlib.Path('ParTest.csv')
         actual = ParameterMapping(testfile).bounds_list
-        expected = [('1','2'), ('1','2'), ('1','2'), ('3','4')]
+        expected = [(1,2), (1,2), (1,2), (3,4)]
         self.assertEqual(actual, expected)
         return
 
