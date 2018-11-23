@@ -103,6 +103,7 @@ class Replicate(collections.OrderedDict):
 
     @abc.abstractmethod
     def error_normal(self, y_hat, error_model: BiomassErrorModel):
+        y_hat_NTU = (y_hat/0.00885685) #To convert backscatter measurement to NTU via CDW
         return error_model.error_model(y_hat, error_model.theta_fitted)
         
 
