@@ -4,6 +4,7 @@ import logging
 import numpy
 import scipy.stats
 logger = logging.getLogger(__name__)
+from . error_model import BiomassErrorModel 
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
@@ -101,33 +102,32 @@ class Replicate(collections.OrderedDict):
         return y_hat, y_hat_std, y_obs
 
     @abc.abstractmethod
-    def error_normal(self, ykey, y_hat):
-        """ Function assuming a 5% relative observation error if not overridden."""
-        logger.warning(f'{self.__class__} does not override error_normal. Assuming a Normal 5%' \
-                     ' relative observation error.')
-        return y_hat * 0.05
+    def error_normal(self, y_hat, error_model: BiomassErrorModel):
+        return error_model.error_model(y_hat, error_model.theta_fitted)
+        
 
-    def loglikelihood_ts(prediction, ts_obs:Timeseries):
+    def loglikelihood_ts(prediction, ts_obs:Timeseries, error_model: BiomassErrorModel):
         """Likelihood of the simulated timeseries y_hat taken from prediction(Replicate) given the observed timeseries y_obs."""
         assert ts_obs.ykey in prediction, f'{prediction.iid} did not contain a prediction of {ts_obs.ykey}'
         ts_hat = prediction[ts_obs.ykey]
-        y_hat_std = prediction.error_normal(ts_hat.ykey, ts_hat.y)
-        y_hat, y_hat_std, y_obs = prediction.comparable_timeseries(ts_hat.x, ts_hat.y, y_hat_std, ts_obs)
+        mu, sigma = prediction.error_normal(ts_hat.y, error_model)
+        y_hat, y_hat_std, y_obs = prediction.comparable_timeseries(ts_hat.x, mu, sigma, ts_obs)
         # return the likelihood of the observations given the simulation
-        return numpy.sum(numpy.log(scipy.stats.norm.pdf(loc=y_hat, scale=y_hat_std, x=y_obs)))
+        return numpy.sum(numpy.log(scipy.stats.t.pdf(loc=y_hat, scale=y_hat_std, x=y_obs, df=1)))
 
     @staticmethod
-    def loglikelihood(data, prediction) -> float:
+    def loglikelihood(data, prediction, error_model: BiomassErrorModel) -> float:
         """Compute the log-likelihood of the Replicate object given the prediction.
         Args:
             data (Replicate): Measured or simulated data to be compared with the prediction
             prediction (Replicate): predicted data y_hat for all timepoints in self.x_any
+            error_model (BiomassErrorModel): object were theta was already fitted with calibration data 
         Returns:
             float: mean log-likelihoods over observed timeseries
         """
         L = []
         for ykey,ts_obs in data.items():
-            L.append(prediction.loglikelihood_ts(ts_obs))
+            L.append(prediction.loglikelihood_ts(ts_obs, error_model))
         L = numpy.sum(L)
         if numpy.isnan(L):
             return -numpy.inf

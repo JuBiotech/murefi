@@ -37,7 +37,7 @@ class ParameterMapping(object):
                 try:
                     float(element)
                 except ValueError:
-                    fitpars_bounds[element] = (parameters.lower_bound[i], parameters.upper_bound[i])
+                    fitpars_bounds[element] = (numpy.float(parameters.lower_bound[i]), numpy.float(parameters.upper_bound[i]))
         
         bounds_list = [
             fitpars_bounds[parameter]

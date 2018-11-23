@@ -68,7 +68,6 @@ class BaseODEModel(object):
         y0 = parameters[:self.n_y]
         theta = parameters
         x = template.x_any
-        
         y_hat_all = self.solver(y0, x, theta)
         
         bmask = template.get_observation_booleans(list(template.keys()))
