@@ -1,5 +1,5 @@
 from . datatypes import Timeseries, Replicate, Dataset
-from . error_model import BiomassErrorModel, ErrorModel
+from . error_model import BiomassErrorModel, ErrorModel, ObjectiveFactory
 from . ode_models import BaseODEModel, MonodModel
 from . parameter_mapping import ParameterMapping
 
