@@ -84,24 +84,7 @@ class Replicate(collections.OrderedDict):
             else:
                 x_bmask[ykey] = numpy.array([True for i in range(len(self.x_any))])
         return x_bmask
-
     
-    def comparable_timeseries(self, x_hat, y_hat, y_hat_std, ts_obs):
-        """ Grab comparable observations using the Boolean mask. """
-        x_obs = ts_obs.x
-        assert set(x_obs).issubset(set(x_hat)), 'Prediction timepoints [x_hat] do ' \
-                    f'not cover all observation timepoints [x_obs] in {ts_obs.ykey}.'
-        n_hat = len(x_hat)
-        assert len(y_hat) == n_hat
-        assert numpy.isscalar(y_hat_std) or len(y_hat_std) == n_hat
-        y_obs = ts_obs.y
-        # slice y_hat and y_hat_std to only those for which y_obs exists
-        y_hat = y_hat[self.get_observation_booleans(ts_obs.ykey).get(ts_obs.ykey)]
-        if not numpy.isscalar(y_hat_std):
-            y_hat_std = y_hat_std[self.get_observation_booleans(ts_obs.ykey).get(ts_obs.ykey)]
-        return y_hat, y_hat_std, y_obs
-
-
     
 class Dataset(collections.OrderedDict):
     """A dataset contains one or more Replicates."""
