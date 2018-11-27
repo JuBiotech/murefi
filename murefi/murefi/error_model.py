@@ -1,16 +1,22 @@
 import abc
 import numpy
 import scipy.optimize
+from . datatypes import Timeseries, Replicate, Dataset
+from . parameter_mapping import ParameterMapping
+from . ode_models import BaseODEModel, MonodModel
 
 class ErrorModel(object):
-    """ A parent class providing the general structure of an error model.
-    
-    """
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, independent:str, dependent:str):
+    def __init__(self, independent:str, dependent:str, key:str):
+        """ A parent class providing the general structure of an error model.
+        independent: independent variable of the eroor model
+        depenedent: dependent variable of the error model
+        key: key found in the Timeseries objects of both the observed data and the prediction
+        """
         self.independent = independent
         self.dependent = dependent
+        self.key = key
         self.theta_fitted = None
         return super().__init__()
     
@@ -79,3 +85,37 @@ class BiomassErrorModel(ErrorModel):
         fit = scipy.optimize.minimize(sum_negative_loglikelihood, theta_guessed, bounds=bounds)
         self.theta_fitted = fit.x
         return fit
+    
+    
+class ObjectiveFactory:
+    def create_objective(dataset: Dataset, model_template: MonodModel, par_map: ParameterMapping, error_models):
+        """ dataset: Dataset object for which the parameters should be fitted.
+        model_template (MonodModel): 
+        par_map (ParameterMapping):
+        error_models: list of ErrorModel objects
+           """
+        def negative_loglikelihood_dataset(theta_fit):
+            L = 0
+            prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
+            for replicate_key, replicates in dataset.items():
+                data = replicates
+                predicted_replicate = prediction[replicate_key]
+                # iterate over timeseries/error_models
+                for error_model in error_models:
+                    key_pred_data = error_model.key
+                    if key_pred_data in data.keys():
+                        #loglikelihood with y_hat converted into y_hat-NTU
+                        y_hat_NTU = (predicted_replicate[key_pred_data].y)/0.00885685
+                        L += error_model.evaluate_loglikelihood(y=data[key_pred_data].y, y_hat=y_hat_NTU)
+            if numpy.isnan(L):
+                return numpy.inf
+            return -L
+        return negative_loglikelihood_dataset
+        
+        
+        # iterate over all error models - without error models we have no way to calculate L
+        # each error model describes the likelihood of a dependent (key_obs)
+        # variable as a function of the independent (key_pred) variable
+        
+                
+       

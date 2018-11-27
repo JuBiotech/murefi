@@ -4,6 +4,7 @@ import logging
 import numpy
 import scipy.stats
 logger = logging.getLogger(__name__)
+#from . error_model import BiomassErrorModel 
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
@@ -83,55 +84,7 @@ class Replicate(collections.OrderedDict):
             else:
                 x_bmask[ykey] = numpy.array([True for i in range(len(self.x_any))])
         return x_bmask
-
     
-    def comparable_timeseries(self, x_hat, y_hat, y_hat_std, ts_obs):
-        """ Grab comparable observations using the Boolean mask. """
-        x_obs = ts_obs.x
-        assert set(x_obs).issubset(set(x_hat)), 'Prediction timepoints [x_hat] do ' \
-                    f'not cover all observation timepoints [x_obs] in {ts_obs.ykey}.'
-        n_hat = len(x_hat)
-        assert len(y_hat) == n_hat
-        assert numpy.isscalar(y_hat_std) or len(y_hat_std) == n_hat
-        y_obs = ts_obs.y
-        # slice y_hat and y_hat_std to only those for which y_obs exists
-        y_hat = y_hat[self.get_observation_booleans(ts_obs.ykey).get(ts_obs.ykey)]
-        if not numpy.isscalar(y_hat_std):
-            y_hat_std = y_hat_std[self.get_observation_booleans(ts_obs.ykey).get(ts_obs.ykey)]
-        return y_hat, y_hat_std, y_obs
-
-    @abc.abstractmethod
-    def error_normal(self, ykey, y_hat):
-        """ Function assuming a 5% relative observation error if not overridden."""
-        logger.warning(f'{self.__class__} does not override error_normal. Assuming a Normal 5%' \
-                     ' relative observation error.')
-        return y_hat * 0.05
-
-    def loglikelihood_ts(prediction, ts_obs:Timeseries):
-        """Likelihood of the simulated timeseries y_hat taken from prediction(Replicate) given the observed timeseries y_obs."""
-        assert ts_obs.ykey in prediction, f'{prediction.iid} did not contain a prediction of {ts_obs.ykey}'
-        ts_hat = prediction[ts_obs.ykey]
-        y_hat_std = prediction.error_normal(ts_hat.ykey, ts_hat.y)
-        y_hat, y_hat_std, y_obs = prediction.comparable_timeseries(ts_hat.x, ts_hat.y, y_hat_std, ts_obs)
-        # return the likelihood of the observations given the simulation
-        return numpy.sum(numpy.log(scipy.stats.norm.pdf(loc=y_hat, scale=y_hat_std, x=y_obs)))
-
-    @staticmethod
-    def loglikelihood(data, prediction) -> float:
-        """Compute the log-likelihood of the Replicate object given the prediction.
-        Args:
-            data (Replicate): Measured or simulated data to be compared with the prediction
-            prediction (Replicate): predicted data y_hat for all timepoints in self.x_any
-        Returns:
-            float: mean log-likelihoods over observed timeseries
-        """
-        L = []
-        for ykey,ts_obs in data.items():
-            L.append(prediction.loglikelihood_ts(ts_obs))
-        L = numpy.sum(L)
-        if numpy.isnan(L):
-            return -numpy.inf
-        return numpy.sum(L)
     
 class Dataset(collections.OrderedDict):
     """A dataset contains one or more Replicates."""

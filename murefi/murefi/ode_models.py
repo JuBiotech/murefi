@@ -66,9 +66,8 @@ class BaseODEModel(object):
         assert not template is None, 'A template must be provided!'
         
         y0 = parameters[:self.n_y]
-        theta = parameters
+        theta = parameters[self.n_y:]
         x = template.x_any
-        
         y_hat_all = self.solver(y0, x, theta)
         
         bmask = template.get_observation_booleans(list(template.keys()))
@@ -143,9 +142,8 @@ class MonodModel(BaseODEModel):
         """
         # NOTE: this method has significant performance impact!
         S, X = y
-        S_0, X_0, mu_max, K_S, Y_XS, t_lag, t_acc = theta
-        logistic = 1 / (1 + numpy.exp(2 + 4*(t_lag - t)/ t_acc))
-        dXdt = mu_max * S * X / (K_S + S) * logistic
+        mu_max, K_S, Y_XS = theta
+        dXdt = mu_max * S * X / (K_S + S)
     
         yprime = [
             -1/Y_XS * dXdt,
