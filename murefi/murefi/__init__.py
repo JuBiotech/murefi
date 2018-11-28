@@ -1,5 +1,6 @@
 from . datatypes import Timeseries, Replicate, Dataset
-from . error_model import BiomassErrorModel, ErrorModel, ObjectiveFactory
+from . error_model import BiomassErrorModel, ErrorModel
+from . objective_factory import ObjectiveFactory
 from . ode_models import BaseODEModel, MonodModel
 from . parameter_mapping import ParameterMapping
 
