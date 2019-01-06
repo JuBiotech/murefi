@@ -21,8 +21,11 @@ class ObjectiveFactory:
                     key_pred_data = error_model.key
                     if key_pred_data in data.keys():
                         #loglikelihood with y_hat converted into y_hat-NTU
-                        y_hat_NTU = (predicted_replicate[key_pred_data].y)/0.00885685
-                        L += error_model.evaluate_loglikelihood(y=data[key_pred_data].y, y_hat=y_hat_NTU)
+                        if key_pred_data == 'BS':
+                            y_hat_NTU = (predicted_replicate[key_pred_data].y)/0.00885685
+                            L += error_model.evaluate_loglikelihood(y=data[key_pred_data].y, y_hat=y_hat_NTU)
+                        else:
+                            L += error_model.evaluate_loglikelihood(y=data[key_pred_data].y, y_hat=predicted_replicate[key_pred_data].y)
             if numpy.isnan(L):
                 return numpy.inf
             return -L
