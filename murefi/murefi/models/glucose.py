@@ -44,7 +44,7 @@ class GlucoseErrorModel(ErrorModel):
         if theta is None:
             theta = self.theta_fitted
         a, b, sigma = theta
-        mu = (y_obs - b) / y_obs
+        mu = (y_obs - b) / a
         return mu
     
     def loglikelihood(self, y, y_hat, theta):
