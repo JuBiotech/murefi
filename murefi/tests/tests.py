@@ -1,5 +1,6 @@
 import unittest
 import numpy
+import pandas
 import pathlib
 import bletl
 from murefi import ParameterMapping, Timeseries, Replicate, Dataset
