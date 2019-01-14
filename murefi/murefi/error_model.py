@@ -19,7 +19,7 @@ class ErrorModel(object):
         return super().__init__()
     
     @abc.abstractmethod
-    def error_model(self, y_hat, theta):
+    def error_model(self, y_hat, theta=None):
         raise NotImplementedException('The error_model function should be implemented by the inheriting class.')
     
     @abc.abstractmethod

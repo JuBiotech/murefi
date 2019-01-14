@@ -37,7 +37,9 @@ class BiomassErrorModel(ErrorModel):
         # Numpy's polynomial function wants to get the highest degree first
         return numpy.polyval(theta_pol[::-1], y_hat)
     
-    def error_model(self, y_hat, theta):
+    def error_model(self, y_hat, theta=None):
+        if theta is None:
+            theta = self.theta_fitted
         mu = self.logistic(y_hat, theta[:4])
         sigma = self.polynomial(y_hat,theta[4:])
         return mu, sigma

@@ -24,7 +24,9 @@ class GlucoseErrorModel(ErrorModel):
         """
         return theta_con + 0*y_hat
 
-    def error_model(self, y_hat, theta):
+    def error_model(self, y_hat, theta=None):
+        if theta is None:
+            theta = self.theta_fitted
         mu = self.linear(y_hat, theta[:2])
         sigma = self.constant(y_hat,theta[2:])
         return mu, sigma
