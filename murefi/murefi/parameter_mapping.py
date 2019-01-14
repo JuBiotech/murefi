@@ -66,3 +66,25 @@ class ParameterMapping(object):
         self.parameters_dic = parameters_dic
         self.bounds_list = bounds_list
         self.fitpars_array = numpy.array(fitpars_list)
+
+    def repmap(self, theta_full):
+        """Remaps a full parameter vector to a dictionary of replicate-wise parameter vectors.
+
+        Args:
+            theta_full (array): full parameter vector
+
+        Returns:
+            theta_dict (dict): dictionary of replicate-wise parameter vectors
+        """
+        pname_to_pvalue = {
+            pname : pvalue
+            for pname, pvalue in zip(self.fitpars_array, theta_full)
+        }
+        theta_dict = {
+            rkey : [
+                pname_to_pvalue[pname]
+                for pname in pnames
+            ]
+            for rkey, pnames in self.parameters_dic.items()
+        }
+        return theta_dict
