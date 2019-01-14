@@ -70,7 +70,7 @@ class DatatypesTest(unittest.TestCase):
         }
         bldata.calibrate(calibration_parameters)
         data = bldata.calibrated_data
-        pardic = ParameterMapping(pathlib.Path('ParTest.csv')).parameters_dic
+        pardic = ParameterMapping(pandas.read_csv(pathlib.Path('ParTest.csv'), sep=';')).parameters_dic
         actual = create_dataset_object(data, pardic)
         self.assertEqual(list(actual.keys()), ['A01', 'B02'])
         self.assertEqual(len(actual['A01']['BS']), len(data['BS10'].value['A01'])) #all data from bletl to Timeseriesin dataset
