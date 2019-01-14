@@ -7,29 +7,29 @@ from murefi import ParameterMapping, Timeseries, Replicate, Dataset
 
 class ParameterMapTest(unittest.TestCase):
     def test_fitpars_bounds(self):
-        testfile = pathlib.Path('ParTest.csv')
-        actual = ParameterMapping(testfile).fitpars_bounds
+        df = pandas.read_csv(pathlib.Path('ParTest.csv'))
+        actual = ParameterMapping(df).fitpars_bounds
         expected = {'test1A': (1,2), 'test1B': (1,2), 'test2C': (1,2), 'test2D': (3,4)}
         self.assertDictEqual(actual, expected)
         return
     
     def test_fitarray(self):
-        testfile = pathlib.Path('ParTest.csv')
-        actual = ParameterMapping(testfile).fitpars_array
+        df = pandas.read_csv(pathlib.Path('ParTest.csv'))
+        actual = ParameterMapping(df).fitpars_array
         expected = ['test1A', 'test1B', 'test2C', 'test2D']
         self.assertEqual(actual.tolist(), expected)
         return
     
     def test_parameters_dic(self):
-        testfile = pathlib.Path('ParTest.csv')
-        actual = ParameterMapping(testfile).parameters_dic
+        df = pandas.read_csv(pathlib.Path('ParTest.csv'))
+        actual = ParameterMapping(df).parameters_dic
         expected = {'A01': ['test1A', 'test1B', '1', '1', 1, 1, 1], 'B02': ['2', 'test1B', 'test2C', 'test2D', 2, 2, 2]} 
         self.assertDictEqual(actual, expected)
         return
     
     def test_bounds_list(self):
-        testfile = pathlib.Path('ParTest.csv')
-        actual = ParameterMapping(testfile).bounds_list
+        df = pandas.read_csv(pathlib.Path('ParTest.csv'))
+        actual = ParameterMapping(df).bounds_list
         expected = [(1,2), (1,2), (1,2), (3,4)]
         self.assertEqual(actual, expected)
         return
