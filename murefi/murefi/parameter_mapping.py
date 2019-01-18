@@ -82,7 +82,7 @@ class ParameterMapping(object):
         }
         theta_dict = {
             rkey : [
-                pname_to_pvalue[pname]
+                pname_to_pvalue[pname] if isinstance(pname, str) else pname
                 for pname in pnames
             ]
             for rkey, pnames in self.parameters_dic.items()
