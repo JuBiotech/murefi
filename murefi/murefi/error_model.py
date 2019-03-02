@@ -19,8 +19,12 @@ class ErrorModel(object):
         return super().__init__()
     
     @abc.abstractmethod
-    def error_model(self, y_hat, theta):
+    def error_model(self, y_hat, theta=None):
         raise NotImplementedException('The error_model function should be implemented by the inheriting class.')
+    
+    @abc.abstractmethod
+    def inverse(self, y_hat, theta=None):
+        raise NotImplementedException('The inverse function should be implemented by the inheriting class.')
         
     def evaluate_loglikelihood(self, y, y_hat):
         return self.loglikelihood(y, y_hat, self.theta_fitted)

@@ -4,7 +4,7 @@ import pathlib
 
 
 class ParameterMapping(object):
-    def __init__(self, path: pathlib.Path):
+    def __init__(self, parameters: pandas.DataFrame):
         """ Class to map process parameters and bounds from a csv file.
         
         The purpose of this class is to map all the parameters provided by the user as a csv file
@@ -15,17 +15,18 @@ class ParameterMapping(object):
         can either type in a number if the value should be fixed or an arbitrary name if the parameter should
         be fitted. In the column named 'Parameter', 'lower_bound' and 'upper_bound' specify the bounds for the fit.
         The other entries in the columns specify the wells the user wishes to use for the parameter estimation (format: 'A01').
-                
-        Return:
+           
+        Args:
+            parameters (pandas.DataFrame): dataframe of parameter settings.
+
         self.fitpars_bounds:  dictionary with only fitting parameters as keys and tuples (lower bound, upper bound)
-                              as value
+                                as value
         self.parameters_dic:  dictionary with the values or names for all parameters provided by the user
-                              (floats and strings)
+                                (floats and strings)
         self.bounds_list:     list of tuples with (lower bound, upper bound) for each fitting paramter
         self.fitpars_array:   numpy array with only the parameters for fitting
         """
         
-        parameters = pandas.read_csv(path, delimiter = ';')
         if not 'Parameter' in parameters.columns:
             raise ValueError('The parameter mapping CSV must call its first column "Parameter"')
         parameters = parameters.set_index('Parameter')
@@ -65,3 +66,25 @@ class ParameterMapping(object):
         self.parameters_dic = parameters_dic
         self.bounds_list = bounds_list
         self.fitpars_array = numpy.array(fitpars_list)
+
+    def repmap(self, theta_full):
+        """Remaps a full parameter vector to a dictionary of replicate-wise parameter vectors.
+
+        Args:
+            theta_full (array): full parameter vector
+
+        Returns:
+            theta_dict (dict): dictionary of replicate-wise parameter vectors
+        """
+        pname_to_pvalue = {
+            pname : pvalue
+            for pname, pvalue in zip(self.fitpars_array, theta_full)
+        }
+        theta_dict = {
+            rkey : [
+                pname_to_pvalue[pname] if isinstance(pname, str) else pname
+                for pname in pnames
+            ]
+            for rkey, pnames in self.parameters_dic.items()
+        }
+        return theta_dict

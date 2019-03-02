@@ -28,6 +28,12 @@ class Timeseries(collections.Sized):
 
     def __len__(self):
         return len(self.x)
+
+    def __str__(self):
+        return f'{self.ykey} [:{len(self)}]'
+
+    def __repr__(self):
+        return self.__str__()
     
 
 class Replicate(collections.OrderedDict):

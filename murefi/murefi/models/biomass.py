@@ -37,10 +37,29 @@ class BiomassErrorModel(ErrorModel):
         # Numpy's polynomial function wants to get the highest degree first
         return numpy.polyval(theta_pol[::-1], y_hat)
     
-    def error_model(self, y_hat, theta):
+    def error_model(self, y_hat, theta=None):
+        if theta is None:
+            theta = self.theta_fitted
         mu = self.logistic(y_hat, theta[:4])
         sigma = self.polynomial(y_hat,theta[4:])
         return mu, sigma
+
+    def inverse(self, y_obs, theta=None):
+        """Make a recalibration using the inverse error model.
+
+        Args:
+            y_obs (array): observed backscatter measurements
+            theta (array): parameter vector of the error model. defaults to theta_fitted
+
+        Returns:
+            biomass (array): recalibrated biomass values
+        """
+        if theta is None:
+            theta = self.theta_fitted
+        I_x, I_y, Lmax, s, _, _ = theta
+        y_val = numpy.log(y_obs)
+        y_hat = I_x-(1/(4*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
+        return numpy.exp(y_hat)
         
     def loglikelihood(self, y, y_hat, theta):
         mu, sigma = self.error_model(y_hat, theta)
