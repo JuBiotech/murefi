@@ -1,15 +1,15 @@
 import numpy
 from . datatypes import Timeseries, Replicate, Dataset
-from . ode_models import BaseODEModel, MonodModel
+from . ode_models import BaseODEModel
 from . parameter_mapping import ParameterMapping
 
 
-def for_dataset(dataset: Dataset, model_template: MonodModel, par_map: ParameterMapping, error_models):
+def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models):
     """Creates an objective function for fitting a Dataset
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
-        model_template (MonodModel): 
+        model_template (BaseODEModel): 
         par_map (ParameterMapping):
         error_models: list of ErrorModel objects
     """
