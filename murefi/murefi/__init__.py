@@ -6,4 +6,4 @@ from . parameter_mapping import ParameterMapping
 from . models import BiomassErrorModel, GlucoseErrorModel, MonodModel
 
 
-__version__ = '0.2'
+__version__ = '0.4'

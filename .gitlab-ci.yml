@@ -13,3 +13,19 @@ python-test:
     - python setup.py develop
     - cd tests
     - python -m unittest -v
+
+python-release:
+  stage: release
+  image: python:3.6
+  script:
+    - cd murefi
+    - python setup.py bdist_wheel
+    - cp dist/*.whl ..
+  artifacts:
+    paths:
+      - ./*.whl
+  only:
+    # only run on refs that are named like v1.2 or v1.2.3
+    - /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+  except:
+    - branches
