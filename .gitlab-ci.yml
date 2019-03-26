@@ -14,6 +14,14 @@ python-test:
     - cd tests
     - python -m unittest -v
 
+coverage-murefi:
+  stage: test
+  image: python:3.6
+  script:
+    - cd murefi && python setup.py develop && cd ..
+    - pip install coverage
+    - cd murefi/tests && coverage run tests.py && coverage report -m
+
 python-release:
   stage: release
   image: python:3.6
@@ -24,6 +32,7 @@ python-release:
   artifacts:
     paths:
       - ./*.whl
+    expire_in: 30 yrs
   only:
     # only run on refs that are named like v1.2 or v1.2.3
     - /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
