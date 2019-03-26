@@ -18,6 +18,7 @@ coverage-murefi:
   stage: test
   image: python:3.6
   script:
+    - cd dependencies && pip install *.whl && cd ..
     - cd murefi && python setup.py develop && cd ..
     - pip install coverage
     - cd murefi/tests && coverage run tests.py && coverage report -m
