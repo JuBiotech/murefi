@@ -110,21 +110,10 @@ class BaseODEModel(object):
         assert not template is None, 'A template must be provided!'
         
         Prediction = Dataset()
-        theta_fit_dic = {
-            par_map.fitpars_array[i] : element 
-            for i, element in enumerate(theta_fit)
-        }
+        theta_dict = par_map.repmap(theta_fit)
         
         for replicate_key, replicates in template.items():
-            user_input = par_map.parameters_dic[replicate_key]
-            theta = []
-            for parameter in user_input:
-                try:
-                    float(parameter)
-                    theta.append(float(parameter))
-                except ValueError:
-                    theta.append(theta_fit_dic[parameter])
             data = replicates
-            Prediction[replicate_key] = self.predict_replicate(theta, data)
+            Prediction[replicate_key] = self.predict_replicate(theta_dict[replicate_key], data)
         return Prediction
     

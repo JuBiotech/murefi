@@ -69,7 +69,6 @@ class Replicate(collections.OrderedDict):
         assert key == value.ykey, f'The key in the Replicate ({key}) must be equal to the Timeseries.ykey ({value.ykey})'
         return super().__setitem__(key, value)
     
-    
     def get_observation_booleans(self, keys_y:list) -> dict:
         """Gets the Boolean masks for observations of each y in [keys_y], relative to [x_any] and ts.x
         Args:
@@ -78,17 +77,13 @@ class Replicate(collections.OrderedDict):
         Returns:
             dict: maps each ykey in keys_y to x_bmask (boolean mask with same size as x_any)
         """
-        
         x_bmask = {}
+        x_any = self.x_any
         for yi,ykey in enumerate(keys_y):
             if ykey in self:
-                ts = self[ykey]
-                x_obs = ts.x
-                assert numpy.all([x in self.x_any for x in x_obs]), 'Prediction timepoints [x_any] do ' \
-                    f'not cover all observation timepoints of {ykey}.'
-                x_bmask[ykey] = numpy.array([char in ts.x for i, char in enumerate(self.x_any)])
+                x_bmask[ykey] = numpy.in1d(x_any, self[ykey].x)
             else:
-                x_bmask[ykey] = numpy.array([True for i in range(len(self.x_any))])
+                x_bmask[ykey] = numpy.repeat(False, len(x_any))
         return x_bmask
     
     

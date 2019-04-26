@@ -6,9 +6,6 @@ python-test:
   stage: test
   image: python:3.6
   script:
-    - cd dependencies
-    - pip install *.whl
-    - cd ..
     - cd murefi
     - python setup.py develop
     - cd tests
