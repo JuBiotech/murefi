@@ -1,5 +1,5 @@
 
-from .. ode_models import BaseODEModel
+from .. ode import BaseODEModel
 
 class MonodModel(BaseODEModel):
     """ Class specifying the model for parameter fitting as Monod kinetics. """
