@@ -1,7 +1,6 @@
 import numpy
-from . datatypes import Timeseries, Replicate, Dataset
-from . ode_models import BaseODEModel
-from . parameter_mapping import ParameterMapping
+from . core import Timeseries, Replicate, Dataset, ParameterMapping
+from . ode import BaseODEModel
 
 
 def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models):

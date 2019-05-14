@@ -1,8 +1,7 @@
 import abc
 import numpy
 import scipy.integrate
-from . datatypes import Replicate, Timeseries, Dataset
-from . parameter_mapping import ParameterMapping
+from . core import Replicate, Timeseries, Dataset, ParameterMapping
 
 
 class BaseODEModel(object):

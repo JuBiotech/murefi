@@ -1,9 +1,8 @@
-from . datatypes import Timeseries, Replicate, Dataset
+from . core import Timeseries, Replicate, Dataset, ParameterMapping
 from . error_model import ErrorModel
 from . import objectives
-from . ode_models import BaseODEModel
-from . parameter_mapping import ParameterMapping
-from . models import BiomassErrorModel, GlucoseErrorModel, MonodModel
+from . ode import BaseODEModel
+from . contrib import BiomassErrorModel, GlucoseErrorModel, MonodModel
 
 
-__version__ = '0.4'
+__version__ = '0.5'
