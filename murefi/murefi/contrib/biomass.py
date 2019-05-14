@@ -22,8 +22,7 @@ class BiomassErrorModel(ErrorModel):
         # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic BTM, 
         # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
         
-        I_x, I_y, Lmax = theta_log[:3]
-        s = theta_log[3:]
+        I_x, I_y, Lmax, s = theta_log[:4]
         
         # For the same reason, y_hat (the x-axis) must be transformed into log-space.
         y_hat = numpy.log(y_hat)
