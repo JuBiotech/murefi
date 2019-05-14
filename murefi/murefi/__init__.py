@@ -5,4 +5,4 @@ from . ode import BaseODEModel
 from . contrib import BiomassErrorModel, GlucoseErrorModel, MonodModel
 
 
-__version__ = '0.5'
+__version__ = '0.5.0'

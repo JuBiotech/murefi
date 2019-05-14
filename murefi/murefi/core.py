@@ -4,8 +4,9 @@ import logging
 import numpy
 import pandas
 import scipy.stats
+
 logger = logging.getLogger(__name__)
-#from . error_model import BiomassErrorModel 
+
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
@@ -45,7 +46,7 @@ class Replicate(collections.OrderedDict):
             iid (str or None): the unique instance ID of the replicate
         """
         self.iid = iid
-        if not hasattr(self, "default_x_any"):
+        if not hasattr(self, 'default_x_any'):
             self.default_x_any = numpy.arange(0, 1, 0.1)
         return super().__init__()
 
