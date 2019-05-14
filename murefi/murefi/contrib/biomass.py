@@ -27,7 +27,7 @@ class BiomassErrorModel(ErrorModel):
         # For the same reason, y_hat (the x-axis) must be transformed into log-space.
         y_hat = numpy.log(y_hat)
         
-        y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-4*s * (y_hat - I_x)))
+        y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
         
         # The logistic model predicts a log-transformed y_val, but outside of this
         # function, the non-log value is expected.        
@@ -66,7 +66,7 @@ class BiomassErrorModel(ErrorModel):
         """
         I_x, I_y, Lmax, s, _, _ = self.theta_fitted
         y_val = numpy.log(y_obs)
-        y_hat = I_x-(1/(4*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
+        y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
         return numpy.exp(y_hat)
         
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):

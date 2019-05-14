@@ -251,7 +251,7 @@ class BiomassErrorModelTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             _ = errormodel.predict_dependent(y_hat, theta)
         mu, sigma, df = errormodel.predict_dependent(y_hat)
-        expected = numpy.exp(2*5-10+(2*(10-5))/(1+numpy.exp(-4*0.5*(numpy.log(y_hat)-5))))
+        expected = numpy.exp(2*5-10+(2*(10-5))/(1+numpy.exp(-2*0.5/(10-5)*(numpy.log(y_hat)-5))))
         self.assertTrue(numpy.allclose(mu, expected))
         self.assertTrue(numpy.allclose(sigma, numpy.array([1,1])))
         self.assertEqual(df, 1)
