@@ -22,7 +22,7 @@ class GlucoseErrorModel(ErrorModel):
             y_hat (array): realizations of the independent variable
             theta_lin (array): parameters of the linear model
         """
-        return theta_lin[0]+theta_lin[1]*y_hat
+        return theta_lin[0] + theta_lin[1] * y_hat
     
     def constant(self, y_hat, theta_con):
         """Constant model for the width of the error distribution
@@ -48,8 +48,8 @@ class GlucoseErrorModel(ErrorModel):
         if theta is None:
             theta = self.theta_fitted
         mu = self.linear(y_hat, theta[:2])
-        sigma = self.constant(y_hat,theta[2:])
-        df=1
+        sigma = self.constant(y_hat, theta[2:])
+        df = 1
         return mu, sigma, df
 
     def predict_independent(self, y_obs):

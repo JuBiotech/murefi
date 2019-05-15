@@ -176,6 +176,7 @@ class ErrorModelTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             _ = errormodel.fit(y_hat, y_obs, theta_guessed)
 
+
 class GlucoseErrorModelTest(unittest.TestCase):
     def test_predict_dependent(self):
         independent = 'Glu'
@@ -194,14 +195,16 @@ class GlucoseErrorModelTest(unittest.TestCase):
         return
     
     def test_predict_independent(self):
-        independent = 'Glu'
-        dependent = 'OD'
-        key = 'S'
-        y_obs = numpy.array([4,5,6])
-        errormodel = murefi.GlucoseErrorModel(independent, dependent, key)
-        errormodel.theta_fitted = [0,2,0.1]
-        mu = errormodel.predict_independent(y_obs)
-        self.assertTrue(numpy.array_equal(mu, numpy.array([2,2.5,3])))
+        errormodel = murefi.GlucoseErrorModel('Glu', 'OD', 'S')
+        errormodel.theta_fitted = [0, 2, 0.1]
+        
+        x_original = numpy.array([4, 5, 6])
+        mu, sd, df = errormodel.predict_dependent(x_original)
+        x_predicted = errormodel.predict_independent(y_obs=mu)
+        
+        self.assertTrue(numpy.array_equal(mu, [8, 10, 12]))
+        self.assertTrue(numpy.array_equal(sd, [0.1, 0.1, 0.1]))
+        self.assertTrue(numpy.allclose(x_predicted, x_original))
         return
 
     def test_loglikelihood(self):
@@ -235,6 +238,7 @@ class GlucoseErrorModelTest(unittest.TestCase):
             _= errormodel.loglikelihood(y_obs=y_obs, y_hat=y_hat)
         return
 
+
 class BiomassErrorModelTest(unittest.TestCase):
     def test_predict_dependent(self):
         independent = 'BTM'
@@ -247,21 +251,21 @@ class BiomassErrorModelTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             _ = errormodel.predict_dependent(y_hat, theta)
         mu, sigma, df = errormodel.predict_dependent(y_hat)
-        expected = numpy.exp(2*5-10+(2*(10-5))/(1+numpy.exp(-4*0.5*(numpy.log(y_hat)-5))))
+        expected = numpy.exp(2*5-10+(2*(10-5))/(1+numpy.exp(-2*0.5/(10-5)*(numpy.log(y_hat)-5))))
         self.assertTrue(numpy.allclose(mu, expected))
         self.assertTrue(numpy.allclose(sigma, numpy.array([1,1])))
         self.assertEqual(df, 1)
         return
     
     def test_predict_independent(self):
-        independent = 'BTM'
-        dependent = 'BS'
-        key = 'X'
-        y_obs = numpy.array([1.00045408, 1.04623159])
-        errormodel = murefi.BiomassErrorModel(independent, dependent, key)
-        errormodel.theta_fitted = numpy.array([5,5,10,0.5,0,1])
-        mu = errormodel.predict_independent(y_obs)
-        self.assertTrue(numpy.allclose(mu, numpy.array([1,10])))
+        errormodel = murefi.BiomassErrorModel('BTM', 'BS', 'X')
+        errormodel.theta_fitted = numpy.array([5, 5, 10, 0.5, 0, 1])
+        
+        x_original = numpy.linspace(0.01, 30, 20)
+        mu, sd, df = errormodel.predict_dependent(x_original)
+        x_predicted = errormodel.predict_independent(y_obs=mu)
+        
+        self.assertTrue(numpy.allclose(x_predicted, x_original))
         return
 
     def test_loglikelihood(self):
@@ -295,6 +299,7 @@ class BiomassErrorModelTest(unittest.TestCase):
         with self.assertRaises(Exception):
             _= errormodel.loglikelihood(y_obs=y_obs, y_hat=y_hat)
         return
+
 
 if __name__ == '__main__':
     unittest.main(exit=False)
