@@ -5,6 +5,7 @@ import scipy.optimize
 
 from .. error_model import ErrorModel
 
+
 class BiomassErrorModel(ErrorModel):
     def logistic(self, y_hat, theta_log):
         """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
@@ -23,7 +24,7 @@ class BiomassErrorModel(ErrorModel):
         # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
         
         I_x, I_y, Lmax, s = theta_log[:4]
-        
+       
         # For the same reason, y_hat (the x-axis) must be transformed into log-space.
         y_hat = numpy.log(y_hat)
         
