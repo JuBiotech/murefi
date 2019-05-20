@@ -83,5 +83,9 @@ class ErrorModel(object):
         Returns:
             fit: Fitting result of scipy.optimize.minimize
         """
-        raise NotImplementedError('The fitting function should be implemented by the inheriting class.')
+        def sum_negative_loglikelihood(theta):
+            return(-self.loglikelihood(y_obs=dependent, y_hat=independent, theta=theta))
+        fit = scipy.optimize.minimize(sum_negative_loglikelihood, theta_guessed, bounds=bounds)
+        self.theta_fitted = fit.x
+        return fit
   
