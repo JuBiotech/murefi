@@ -1,7 +1,6 @@
 import collections
 import unittest
 import numpy
-import pandas
 import pathlib
 import scipy.stats as stats
 

@@ -34,7 +34,6 @@ setuptools.setup(name = __packagename__,
         ],
         install_requires=[
             'numpy',
-            'pandas',
             'scipy'
         ]
 )
