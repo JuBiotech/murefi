@@ -8,9 +8,12 @@ import scipy.stats as stats
 import murefi
 
 
+dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
+
+
 class ParameterMapTest(unittest.TestCase):
     def test_init(self):
-        map_df = pandas.read_csv(r"ParTest.csv", sep=';')
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
         bounds = dict(
             S_0=(1,2),
@@ -47,9 +50,9 @@ class ParameterMapTest(unittest.TestCase):
         return
     
     def test_invalid_init(self):
-        map_df = pandas.read_csv(r"ParTest.csv", sep=';')
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
-        mapfail_df = pandas.read_csv(r"ParTestFail.csv", sep=';')
+        mapfail_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTestFail.csv'), sep=';')
         mapfail_df.set_index(mapfail_df.columns[0])
         bounds = dict(
             S_0=(1,2),
@@ -74,7 +77,7 @@ class ParameterMapTest(unittest.TestCase):
             _ = murefi.ParameterMapping(mapfail_df, bounds=bounds, guesses=initial_guesses)
 
     def test_repmap(self):
-        map_df = pandas.read_csv(r"ParTest.csv", sep=';')
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
         bounds = dict(
             S_0=(1,2),

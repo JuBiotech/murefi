@@ -6,6 +6,9 @@ import pathlib
 import scipy.stats as stats
 
 import calibr8
+
+
+dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
        
 
 class ErrorModelTest(unittest.TestCase):
