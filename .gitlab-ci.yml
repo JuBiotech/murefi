@@ -2,37 +2,67 @@ stages:
   - test
   - release
 
-python-test:
+test-calibr8:
   stage: test
   image: python:3.6
   script:
+    - cd calibr8
+    - python setup.py bdist_wheel && pip install dist/*.whl
+    - python -m unittest discover -s tests -v
+
+test-murefi:
+  stage: test
+  image: python:3.6
+  script:
+    - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
     - cd murefi
-    - python setup.py develop
-    - cd tests
-    - python -m unittest -v
+    - python setup.py bdist_wheel && pip install dist/*.whl
+    - python -m unittest discover -s tests -v
+
+coverage-calibr8:
+  stage: test
+  image: python:3.6
+  script:
+    - cd calibr8 && python setup.py develop
+    - pip install coverage
+    - coverage run tests/tests.py && coverage report -m
 
 coverage-murefi:
   stage: test
   image: python:3.6
   script:
-    - cd dependencies && pip install *.whl && cd ..
-    - cd murefi && python setup.py develop && cd ..
+    - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
+    - cd murefi && python setup.py develop
     - pip install coverage
-    - cd murefi/tests && coverage run tests.py && coverage report -m
+    - coverage run tests/tests.py && coverage report -m
 
-python-release:
+release-calibr8:
   stage: release
   image: python:3.6
   script:
-    - cd murefi
-    - python setup.py bdist_wheel
-    - cp dist/*.whl ..
+    - cd calibr8 && python setup.py bdist_wheel && cp dist/*.whl ..
   artifacts:
     paths:
       - ./*.whl
     expire_in: 30 yrs
   only:
-    # only run on refs that are named like v1.2 or v1.2.3
-    - /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+    # only run on refs that are named like calibr8_v1.2 or calibr8_v1.2.3
+    - /^calibr8_v(\d+\.)?(\d+\.)?(\*|\d+)$/
+  except:
+    - branches
+
+release-murefi:
+  stage: release
+  image: python:3.6
+  script:
+    - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
+    - cd murefi && python setup.py bdist_wheel && cp dist/*.whl ..
+  artifacts:
+    paths:
+      - ./*.whl
+    expire_in: 30 yrs
+  only:
+    # only run on refs that are named like murefi_v1.2 or murefi_v1.2.3
+    - /^murefi_v(\d+\.)?(\d+\.)?(\*|\d+)$/
   except:
     - branches
