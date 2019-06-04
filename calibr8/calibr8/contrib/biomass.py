@@ -1,5 +1,4 @@
 import abc
-import logging as logger
 import numpy
 import scipy.optimize
 

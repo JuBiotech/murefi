@@ -1,11 +1,12 @@
 import abc
-import logging as logger
+import logging
+logger = logging.getLogger('calibr8.contrib.glucose')
 import numpy  
 import scipy.optimize
 try:
     import pymc3 as pm
 except ModuleNotFoundError:
-   logger.warning('Pymc3 is not installed. The function infer_independent cannot be used and tensor variables are not supported.')
+   logger.warn('Pymc3 is not installed. The function infer_independent cannot be used and tensor variables are not supported.')
 
 from .. core import ErrorModel
 
