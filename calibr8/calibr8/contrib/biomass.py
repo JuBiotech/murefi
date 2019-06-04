@@ -1,9 +1,8 @@
 import abc
-import logging as logger
 import numpy
 import scipy.optimize
 
-from .. error_model import ErrorModel
+from .. core import ErrorModel
 
 
 class BiomassErrorModel(ErrorModel):

@@ -1,6 +1,6 @@
 import setuptools
 
-__packagename__ = 'murefi'
+__packagename__ = 'calibr8'
 
 def get_version():
     import os, re
@@ -31,9 +31,7 @@ setuptools.setup(name = __packagename__,
             'Intended Audience :: Developers'
         ],
         install_requires=[
-            'pandas',
             'numpy',
-            'scipy',
-            'calibr8'
+            'scipy'
         ]
 )
