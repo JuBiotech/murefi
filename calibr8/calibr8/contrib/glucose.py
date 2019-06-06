@@ -6,7 +6,7 @@ import scipy.optimize
 try:
     import pymc3 as pm
 except ModuleNotFoundError:
-   logger.warn('Pymc3 is not installed. The function infer_independent cannot be used and tensor variables are not supported.')
+    pass
 
 from .. core import ErrorModel
 

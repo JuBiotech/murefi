@@ -1,42 +1,24 @@
 import abc
+import logging
+logger = logging.getLogger('calibr8.contrib.biomass')
+import numpy  
 import numpy
 import scipy.optimize
+import sys
+try:
+    import pymc3 as pm
+except ModuleNotFoundError:
+    logger.warning('Pymc3 is not installed. The function infer_independent cannot be used and tensor variables are not supported.')
 
-from .. core import ErrorModel
+try:
+    import theano
+except ModuleNotFoundError:
+    logger.warning('Theano is not installed. Tensor variables are not supported.')
+   
+from .. core import ErrorModel, log_log_logistic, polynomial
 
 
 class BiomassErrorModel(ErrorModel):
-    def logistic(self, y_hat, theta_log):
-        """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
-        
-        Arguments:
-            y_hat (array): realizations of the independent variable
-            theta_log (array): parameters of the log-log logistic model
-            I_x: inflection point (ln(x))
-            I_y: inflection point (ln(y))
-            Lmax: maximum value in log sapce
-            s: log-log steepness
-        """
-        # IMPORTANT: Outside of this function, it is irrelevant that the correlation is modeled in log-log space.
-   
-        # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic BTM, 
-        # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
-        
-        I_x, I_y, Lmax, s = theta_log[:4]
-       
-        # For the same reason, y_hat (the x-axis) must be transformed into log-space.
-        y_hat = numpy.log(y_hat)
-        
-        y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
-        
-        # The logistic model predicts a log-transformed y_val, but outside of this
-        # function, the non-log value is expected.        
-        return numpy.exp(y_val)
-    
-    def polynomial(self, y_hat, theta_pol):
-        # Numpy's polynomial function wants to get the highest degree first
-        return numpy.polyval(theta_pol[::-1], y_hat)
-    
     def predict_dependent(self, y_hat, *, theta=None):
         """Predicts the parameters mu and sigma of a student-t-distribution which characterises the dependent variable (backscatter) given values of the independent variable (BTM).
 
@@ -50,8 +32,8 @@ class BiomassErrorModel(ErrorModel):
         """
         if theta is None:
             theta = self.theta_fitted
-        mu = self.logistic(y_hat, theta[:4])
-        sigma = self.polynomial(y_hat,theta[4:])
+        mu = log_log_logistic(y_hat, theta[:4])
+        sigma = polynomial(y_hat,theta[4:])
         df=1
         return mu, sigma, df
 
@@ -68,6 +50,49 @@ class BiomassErrorModel(ErrorModel):
         y_val = numpy.log(y_obs)
         y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
         return numpy.exp(y_hat)
+        
+    def theano_logistic(self, y_hat, theta_log):
+        """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
+        
+        Arguments:
+            y_hat (array): realizations of the independent variable
+            theta_log (array): parameters of the log-log logistic model
+            I_x: inflection point (ln(x))
+            I_y: inflection point (ln(y))
+            Lmax: maximum value in log sapce
+            s: log-log slope
+        """
+        if 'theano'in sys.modules:
+            # IMPORTANT: Outside of this function, it is irrelevant that the correlation is modeled in log-log space.
+            # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic NTU,
+            # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
+            I_x, I_y, Lmax = theta_log[:3]
+            s = theta_log[3:]
+
+            # For the same reason, y_hat (the x-axis) must be transformed into log-space.
+            y_hat = theano.tensor.log(y_hat)
+            y_val = 2.0 * I_y - Lmax + (2.0 * (Lmax - I_y)) / (1.0 + theano.tensor.exp(-4.0*s * (y_hat - I_x)))
+
+            # The logistic model predicts a log-transformed y_val, but outside of this
+            # function, the non-log value is expected.
+            return theano.tensor.exp(y_val)
+
+        else:
+            raise ImportError('Theano is not imported. Method therefore cannot be used.')
+
+    def infer_independent(self, y_obs):
+        if 'pymc3'in sys.modules:
+            theta = self.theta_fitted
+            with pm.Model() as model:
+                btm = pm.Uniform('BTM', lower=0, upper=17, shape=(1,))
+                mu = self.theano_logistic(btm, theta[:4])
+                sd = polynomial(btm,theta[4:])
+                ll = pm.StudentT('likelihood', nu=1, mu=mu, sd=sd, observed=y_obs, shape=(1,))
+                trace = pm.sample(1000)
+            return trace
+        else:
+            raise ImportError('PyMC3 is not imported. Method therefore cannot be used.')
+            
         
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):
         """Loglikelihood of observation (dependent variable) given the independent variable
