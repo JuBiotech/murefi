@@ -5,8 +5,23 @@ import numpy
 import scipy.optimize
 try:
     import pymc3 as pm
-except ModuleNotFoundError:
-    pass
+except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
+    class _ImportWarner:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
+            )
+
+    class _PyMC3:
+        def __getattr__(self, attr):
+            return _ImportWarner(attr)
+    
+    pm = _PyMC3()
 
 from .. core import ErrorModel
 

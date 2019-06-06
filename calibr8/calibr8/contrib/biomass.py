@@ -7,14 +7,45 @@ import scipy.optimize
 import sys
 try:
     import pymc3 as pm
-except ModuleNotFoundError:
-    logger.warning('Pymc3 is not installed. The function infer_independent cannot be used and tensor variables are not supported.')
+except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
+    class _ImportWarner:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
+            )
+
+    class _PyMC3:
+        def __getattr__(self, attr):
+            return _ImportWarner(attr)
+    
+    pm = _PyMC3()
 
 try:
     import theano
-except ModuleNotFoundError:
-    logger.warning('Theano is not installed. Tensor variables are not supported.')
-   
+except ModuleNotFoundError:  # theano is optional, throw exception when used
+
+    class _ImportWarner:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "Theano is not installed. In order to use this function:\npip install theano"
+            )
+
+    class _Theano:
+        def __getattr__(self, attr):
+            return _ImportWarner(attr)
+    
+    theano = _Theano()
+
 from .. core import ErrorModel, log_log_logistic, polynomial
 
 
@@ -62,37 +93,29 @@ class BiomassErrorModel(ErrorModel):
             Lmax: maximum value in log sapce
             s: log-log slope
         """
-        if 'theano'in sys.modules:
-            # IMPORTANT: Outside of this function, it is irrelevant that the correlation is modeled in log-log space.
-            # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic NTU,
-            # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
-            I_x, I_y, Lmax = theta_log[:3]
-            s = theta_log[3:]
+        # IMPORTANT: Outside of this function, it is irrelevant that the correlation is modeled in log-log space.
+        # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic NTU,
+        # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
+        I_x, I_y, Lmax = theta_log[:3]
+        s = theta_log[3:]
 
-            # For the same reason, y_hat (the x-axis) must be transformed into log-space.
-            y_hat = theano.tensor.log(y_hat)
-            y_val = 2.0 * I_y - Lmax + (2.0 * (Lmax - I_y)) / (1.0 + theano.tensor.exp(-4.0*s * (y_hat - I_x)))
+        # For the same reason, y_hat (the x-axis) must be transformed into log-space.
+        y_hat = theano.tensor.log(y_hat)
+        y_val = 2.0 * I_y - Lmax + (2.0 * (Lmax - I_y)) / (1.0 + theano.tensor.exp(-4.0*s * (y_hat - I_x)))
 
-            # The logistic model predicts a log-transformed y_val, but outside of this
-            # function, the non-log value is expected.
-            return theano.tensor.exp(y_val)
-
-        else:
-            raise ImportError('Theano is not imported. Method therefore cannot be used.')
+        # The logistic model predicts a log-transformed y_val, but outside of this
+        # function, the non-log value is expected.
+        return theano.tensor.exp(y_val)
 
     def infer_independent(self, y_obs):
-        if 'pymc3'in sys.modules:
-            theta = self.theta_fitted
-            with pm.Model() as model:
-                btm = pm.Uniform('BTM', lower=0, upper=17, shape=(1,))
-                mu = self.theano_logistic(btm, theta[:4])
-                sd = polynomial(btm,theta[4:])
-                ll = pm.StudentT('likelihood', nu=1, mu=mu, sd=sd, observed=y_obs, shape=(1,))
-                trace = pm.sample(1000)
-            return trace
-        else:
-            raise ImportError('PyMC3 is not imported. Method therefore cannot be used.')
-            
+        theta = self.theta_fitted
+        with pm.Model() as model:
+            btm = pm.Uniform('BTM', lower=0, upper=17, shape=(1,))
+            mu = self.theano_logistic(btm, theta[:4])
+            sd = polynomial(btm,theta[4:])
+            ll = pm.StudentT('likelihood', nu=1, mu=mu, sd=sd, observed=y_obs, shape=(1,))
+            trace = pm.sample(1000)
+        return trace
         
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):
         """Loglikelihood of observation (dependent variable) given the independent variable
