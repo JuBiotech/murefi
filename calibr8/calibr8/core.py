@@ -155,7 +155,7 @@ def ylog_logistic(y_hat, theta_log):
              
         return numpy.exp(y_val)
 
-def polynomial(self, y_hat, theta_pol):
+def polynomial(y_hat, theta_pol):
     # Numpy's polynomial function wants to get the highest degree first
     return numpy.polyval(theta_pol[::-1], y_hat)
     
