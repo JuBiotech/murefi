@@ -18,7 +18,7 @@ class ErrorModel(object):
         self.dependent = dependent
         self.key = key
         self.theta_fitted = None
-        return super().__init__()
+        super().__init__()
     
     @abc.abstractmethod
     def predict_dependent(self, y_hat, *, theta=None):
@@ -91,15 +91,18 @@ class ErrorModel(object):
 
 
 def logistic(y_hat, theta):
-        """Logistic model of the expected measurement outcomes, given a true independent variable.
+        """Logistic model of the expected measurement outcome, given a true independent variable.
         
-        Arguments:
-                y_hat (array): realizations of the independent variable
-                theta (array): parameters of the logistic model
-                I_x: x-value at inflection point
-                I_y: y-value at inflection point
-                Lmax: maximum value
-                s: slope at the inflection point
+        Args:
+            y_hat (array): realizations of the independent variable
+            theta (array): parameters of the logistic model
+            I_x: x-value at inflection point
+            I_y: y-value at inflection point
+            Lmax: maximum value
+            s: slope at the inflection point
+        
+        Returns:
+            y_val: expected measurement outcome
         """
         I_x, I_y, Lmax, s = theta[:4]
         y_hat = numpy.array(y_hat)      
@@ -108,58 +111,151 @@ def logistic(y_hat, theta):
         return y_val
 
 
+def inverse_logistic(y_obs, theta):
+    """Inverse logistic model returning the predicted independent variable given the measurement.
+    
+    Args:
+        y_obs (array): measured values
+        theta (array): parameters of the logistic model
+        I_x: x-value at inflection point
+        I_y: y-value at inflection point
+        Lmax: maximum value
+        s: slope at the inflection point
+    
+    Returns:
+        y_hat: predicted value of the independent variable
+    """
+    I_x, I_y, Lmax, s = theta[:4]
+    y_val = numpy.array(y_obs)
+    y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
+
+    return y_hat
+
+
 def log_log_logistic(y_hat, theta_log):
-        """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
+    """Log-log logistic model of the expected measurement outcome, given a true independent variable.
+    
+    Args:
+        y_hat (array): realizations of the independent variable
+        theta_log (array): parameters of the log-log logistic model
+        I_x: inflection point (ln(x))
+        I_y: inflection point (ln(y))
+        Lmax: logarithmic maximum value
+        s: slope at the inflection point
+    
+    Returns:
+        y_obs: expected measurement outcome
+    """
+    I_x, I_y, Lmax, s = theta_log[:4]
+    y_hat = numpy.log(y_hat)    
+    y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
+            
+    return numpy.exp(y_val)
+
+
+def inverse_log_log_logistic(y_obs, theta_log):
+    """Inverse logistic model returning the predicted independent variable given the measurement.
         
-        Arguments:
-                y_hat (array): realizations of the independent variable
-                theta_log (array): parameters of the log-log logistic model
-                I_x: inflection point (ln(x))
-                I_y: inflection point (ln(y))
-                Lmax: maximum value
-                s: slope at the inflection point
-        """
-        I_x, I_y, Lmax, s = theta_log[:4]
-        y_hat = numpy.log(y_hat)    
-        y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
-             
-        return numpy.exp(y_val)
+    Args:
+        y_obs (array): measured values
+        theta (array): parameters of the logistic model
+        I_x: x-value at inflection point (ln(x))
+        I_y: y-value at inflection point (ln(y))
+        Lmax: maximum value in log space
+        s: slope at the inflection point
+    
+    Returns:
+        y_hat: predicted value of the independent variable
+    """
+    I_x, I_y, Lmax, s = theta_log[:4]
+    y_val = numpy.log(y_obs)
+    y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
+    
+    return numpy.exp(y_hat)
 
 
 def xlog_logistic(y_hat, theta_log):
-        """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
+    """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
+    
+    Args:
+        y_hat (array): realizations of the independent variable
+        theta_log (array): parameters of the log-log logistic model
+        I_x: inflection point (ln(x))
+        I_y: inflection point (y)
+        Lmax: maximum value
+        s: slope at the inflection point
+    
+    Returns:
+        y_obs: expected measurement outcome
+    """
+    I_x, I_y, Lmax, s = theta_log[:4]
+    y_hat = numpy.log(y_hat)    
+    y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
+            
+    return y_val
+
+
+def inverse_xlog_logistic(y_obs, theta_log):
+    """Inverse logistic model returning the predicted independent variable given the measurement.
         
-        Arguments:
-                y_hat (array): realizations of the independent variable
-                theta_log (array): parameters of the log-log logistic model
-                I_x: inflection point (ln(x))
-                I_y: inflection point (y)
-                Lmax: maximum value
-                s: slope at the inflection point
-        """
-        I_x, I_y, Lmax, s = theta_log[:4]
-        y_hat = numpy.log(y_hat)    
-        y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
-             
-        return y_val
+    Args:
+        y_obs (array): measured values
+        theta (array): parameters of the logistic model
+        I_x: x-value at inflection point (ln(x))
+        I_y: y-value at inflection point
+        Lmax: maximum value
+        s: slope at the inflection point
+    
+    Returns:
+        y_hat: predicted value of the independent variable
+    """
+    I_x, I_y, Lmax, s = theta_log[:4]
+    y_val = y_obs
+    y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
+    
+    return numpy.exp(y_hat)
 
 
 def ylog_logistic(y_hat, theta_log):
         """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
         
-        Arguments:
-                y_hat (array): realizations of the independent variable
-                theta_log (array): parameters of the log-log logistic model
-                I_x: inflection point (x)
-                I_y: inflection point (ln(y))
-                Lmax: maximum value in log sapce
-                s: slope at the inflection point
+        Args:
+            y_hat (array): realizations of the independent variable
+            theta_log (array): parameters of the log-log logistic model
+            I_x: inflection point (x)
+            I_y: inflection point (ln(y))
+            Lmax: maximum value in log sapce
+            s: slope at the inflection point
+        
+        Returns:
+            y_obs: expected measurement outcome
         """
         I_x, I_y, Lmax, s = theta_log[:4]
         y_hat = numpy.array(y_hat) 
         y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
              
         return numpy.exp(y_val)
+
+
+def inverse_ylog_logistic(y_obs, theta_log):
+    """Inverse logistic model returning the predicted independent variable given the measurement.
+        
+    Args:
+        y_obs (array): measured values
+        theta (array): parameters of the logistic model
+        I_x: x-value at inflection point
+        I_y: y-value at inflection point (ln(y))
+        Lmax: maximum value in log space
+        s: slope at the inflection point
+    
+    Returns:
+        y_hat: predicted value of the independent variable
+    """
+    I_x, I_y, Lmax, s = theta_log[:4]
+    y_val = numpy.log(y_obs)
+    y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
+    
+    return y_hat
 
 
 def polynomial(y_hat, theta_pol):

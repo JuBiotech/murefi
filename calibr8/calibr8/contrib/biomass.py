@@ -1,5 +1,4 @@
 import abc
-import numpy  
 import numpy
 import scipy.optimize
 import sys
@@ -44,10 +43,21 @@ except ModuleNotFoundError:  # theano is optional, throw exception when used
     
     theano = _Theano()
 
-from .. core import ErrorModel, log_log_logistic, polynomial
+from .. core import ErrorModel, log_log_logistic, polynomial, inverse_log_log_logistic
 
 
 class BiomassErrorModel(ErrorModel):
+    def __init__(self, independent:str, dependent:str, key:str):
+        """ A parent class providing the general structure of an error model.
+
+        Args:
+            independent: independent variable of the error model
+            dependent: dependent variable of the error model
+            key: key found in the Timeseries objects of both the observed data and the prediction
+        """
+        super().__init__(independent, dependent, key)
+        self.student_df=1
+          
     def predict_dependent(self, y_hat, *, theta=None):
         """Predicts the parameters mu and sigma of a student-t-distribution which characterises the dependent variable (backscatter) given values of the independent variable (BTM).
 
@@ -63,7 +73,7 @@ class BiomassErrorModel(ErrorModel):
             theta = self.theta_fitted
         mu = log_log_logistic(y_hat, theta[:4])
         sigma = polynomial(y_hat,theta[4:])
-        df=1
+        df=self.student_df
         return mu, sigma, df
 
     def predict_independent(self, y_obs):
@@ -75,10 +85,8 @@ class BiomassErrorModel(ErrorModel):
         Returns:
             biomass (array): most likely biomass values (independent variable)
         """
-        I_x, I_y, Lmax, s, _, _ = self.theta_fitted
-        y_val = numpy.log(y_obs)
-        y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
-        return numpy.exp(y_hat)
+        y_hat = inverse_log_log_logistic(y_obs, self.theta_fitted)
+        return y_hat
         
     def theano_logistic(self, y_hat, theta_log):
         """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
@@ -105,13 +113,13 @@ class BiomassErrorModel(ErrorModel):
         # function, the non-log value is expected.
         return theano.tensor.exp(y_val)
 
-    def infer_independent(self, y_obs, *, btm_lower=0, btm_upper=17, student_df=1, draws=1000):
+    def infer_independent(self, y_obs, *, btm_lower=0, btm_upper=17, draws=1000):
         """Infer the posterior distribution of the independent variable given the observations of one point of the dependent variable.
         
         Args:
             y_obs (array): observed OD measurements
             btm_lower (int): lower limit for uniform distribution of btm prior
-            btm_upper (int): lower limit for uniform distribution of btm prior
+            btm_upper (int): upper limit for uniform distribution of btm prior
             student_df (int): df of student-t-likelihood (default: 1)
             draws (int): number of samples to draw (handed to pymc3.sample)
         
@@ -122,8 +130,8 @@ class BiomassErrorModel(ErrorModel):
         with pm.Model() as model:
             btm = pm.Uniform('BTM', lower=btm_lower, upper=btm_upper, shape=(1,))
             mu = self.theano_logistic(btm, theta[:4])
-            sd = polynomial(btm,theta[4:])
-            ll = pm.StudentT('likelihood', nu=student_df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
+            sd = polynomial(btm, theta[4:])
+            ll = pm.StudentT('likelihood', nu=self.student_df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
             trace = pm.sample(draws)
         return trace
         

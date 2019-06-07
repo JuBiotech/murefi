@@ -50,16 +50,24 @@ class ErrorModelTest(unittest.TestCase):
 
 class LogisticTest(unittest.TestCase):
     def test_logistic(self):
-        y_hat=numpy.array([1,2,4])
-        theta= [2,2,4,1]
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
         expected = 2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(y_hat-2)))
         true = calibr8.logistic(y_hat, theta)
         self.assertTrue(numpy.array_equal(true, expected))
+        return
+
+    def test_inverse_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.logistic(y_hat, theta)
+        reverse = calibr8.inverse_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
         return       
-    
+
     def test_log_log_logistic(self):
-        y_hat=numpy.array([1,2,4])
-        theta= [2,2,4,1]
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
         expected = numpy.exp(2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(numpy.log(y_hat)-2))))
         true = calibr8.log_log_logistic(y_hat, theta)
         self.assertTrue(numpy.array_equal(true, expected))
@@ -67,24 +75,48 @@ class LogisticTest(unittest.TestCase):
         self.assertTrue(numpy.array_equal(true, expected))
         return
 
+    def test_inverse_log_log_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.log_log_logistic(y_hat, theta)
+        reverse = calibr8.inverse_log_log_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
+        return
+
     def test_xlog_logistic(self):
-        y_hat=numpy.array([1,2,4])
-        theta= [2,2,4,1]
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
         expected = 2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(numpy.log(y_hat)-2)))
         true = calibr8.xlog_logistic(y_hat, theta)
         self.assertTrue(numpy.array_equal(true, expected))
         expected = calibr8.logistic(numpy.log(y_hat), theta)
         self.assertTrue(numpy.array_equal(true, expected))        
         return
+        
+    def test_inverse_xlog_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.xlog_logistic(y_hat, theta)
+        reverse = calibr8.inverse_xlog_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
+        return
 
     def test_ylog_logistic(self):
-        y_hat=numpy.log([1,2,4])
-        theta= [2,2,4,1]
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
         expected = numpy.exp(2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(y_hat-2))))
         true = calibr8.ylog_logistic(y_hat, theta)
         self.assertTrue(numpy.array_equal(true, expected))
         expected = numpy.exp(calibr8.logistic(y_hat, theta))
         self.assertTrue(numpy.array_equal(true, expected))
+        return
+
+    def test_inverse_xlog_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.ylog_logistic(y_hat, theta)
+        reverse = calibr8.inverse_ylog_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
         return
 
 
