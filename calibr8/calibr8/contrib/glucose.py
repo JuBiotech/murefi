@@ -5,13 +5,39 @@ import numpy
 import scipy.optimize
 try:
     import pymc3 as pm
-except ModuleNotFoundError:
-   logger.warn('Pymc3 is not installed. The function infer_independent cannot be used and tensor variables are not supported.')
+except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
+    class _ImportWarner:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
+            )
+
+    class _PyMC3:
+        def __getattr__(self, attr):
+            return _ImportWarner(attr)
+    
+    pm = _PyMC3()
 
 from .. core import ErrorModel
 
 
 class GlucoseErrorModel(ErrorModel):
+    def __init__(self, independent:str, dependent:str, key:str):
+        """ A parent class providing the general structure of an error model.
+
+        Args:
+            independent: independent variable of the error model
+            dependent: dependent variable of the error model
+            key: key found in the Timeseries objects of both the observed data and the prediction
+        """
+        super().__init__(independent, dependent, key)
+        self.student_df=1
+        
     def linear(self, y_hat, theta_lin):
         """Linear model of the expected measurement outcomes, given a true independent variable.
         
@@ -62,21 +88,24 @@ class GlucoseErrorModel(ErrorModel):
         mu = (y_obs - a) / b
         return mu
 
-    def infer_independent(self, y_obs):
+    def infer_independent(self, y_obs, *, glc_lower=0, glc_upper=100, draws=1000):
         """Infer the posterior distribution of the independent variable given the observations of one point of the dependent variable.
         
         Args:
             y_obs (array): observed OD measurements
+            glc_lower (int): lower limit for uniform distribution of glucose prior
+            glc_upper (int): lower limit for uniform distribution of glucose prior
+            draws (int): number of samples to draw (handed to pymc3.sample)
         
         Returns:
             trace: trace of the posterior distribution of inferred glucose concentration
         """ 
         theta = self.theta_fitted
         with pm.Model() as model:
-            glc = pm.Uniform('Glucose', lower=0, upper=100, shape=(1,))
-            mu, sd, df = self.predict_dependent(glc, theta)
+            glc = pm.Uniform('Glucose', lower=glc_lower, upper=glc_upper, shape=(1,))
+            mu, sd, df = self.predict_dependent(glc, theta=theta)
             ll = pm.StudentT('likelihood', nu=df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
-            trace = pm.sample(1000)
+            trace = pm.sample(draws)
         return trace
 
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):

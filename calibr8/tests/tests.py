@@ -7,6 +7,13 @@ import scipy.stats as stats
 import calibr8
 
 
+try:
+    import pymc3
+    HAVE_PYMC3 = True
+except ModuleNotFoundError:
+    HAVE_PYMC3 = False
+
+
 dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
        
 
@@ -40,16 +47,77 @@ class ErrorModelTest(unittest.TestCase):
             _ = errormodel.fit(independent=y_hat, dependent=y_obs, theta_guessed=None)
         return
     
-    def test_fit(self):
-        independent = 'X'
-        dependent = 'BS'
-        key = 'X'
-        y_hat = numpy.array([1,2,3])
-        y_obs = numpy.array([4,5,6])
-        theta_guessed= [0]
-        errormodel = calibr8.ErrorModel(independent, dependent, key)
-        with self.assertRaises(TypeError):
-            _ = errormodel.fit(y_hat, y_obs, theta_guessed)
+
+class LogisticTest(unittest.TestCase):
+    def test_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        expected = 2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(y_hat-2)))
+        true = calibr8.logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        return
+
+    def test_inverse_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.logistic(y_hat, theta)
+        reverse = calibr8.inverse_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
+        return       
+
+    def test_log_log_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        expected = numpy.exp(2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(numpy.log(y_hat)-2))))
+        true = calibr8.log_log_logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        expected = numpy.exp(calibr8.logistic(numpy.log(y_hat), theta))   
+        self.assertTrue(numpy.array_equal(true, expected))
+        return
+
+    def test_inverse_log_log_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.log_log_logistic(y_hat, theta)
+        reverse = calibr8.inverse_log_log_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
+        return
+
+    def test_xlog_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        expected = 2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(numpy.log(y_hat)-2)))
+        true = calibr8.xlog_logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        expected = calibr8.logistic(numpy.log(y_hat), theta)
+        self.assertTrue(numpy.array_equal(true, expected))        
+        return
+        
+    def test_inverse_xlog_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.xlog_logistic(y_hat, theta)
+        reverse = calibr8.inverse_xlog_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
+        return
+
+    def test_ylog_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        expected = numpy.exp(2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(y_hat-2))))
+        true = calibr8.ylog_logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        expected = numpy.exp(calibr8.logistic(y_hat, theta))
+        self.assertTrue(numpy.array_equal(true, expected))
+        return
+
+    def test_inverse_xlog_logistic(self):
+        y_hat = numpy.array([1.,2.,4.])
+        theta = [2,2,4,1]
+        forward = calibr8.ylog_logistic(y_hat, theta)
+        reverse = calibr8.inverse_ylog_logistic(forward, theta)
+        self.assertTrue(numpy.allclose(numpy.array(y_hat), reverse))
+        return
 
 
 class GlucoseErrorModelTest(unittest.TestCase):
@@ -80,6 +148,22 @@ class GlucoseErrorModelTest(unittest.TestCase):
         self.assertTrue(numpy.array_equal(mu, [8, 10, 12]))
         self.assertTrue(numpy.array_equal(sd, [0.1, 0.1, 0.1]))
         self.assertTrue(numpy.allclose(x_predicted, x_original))
+        return
+    
+    @unittest.skipUnless(HAVE_PYMC3, "requires PyMC3")
+    def test_infer_independent(self):
+        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        errormodel.theta_fitted = [0, 2, 0.1]
+        trace = errormodel.infer_independent(y_obs=1, draws=1)
+        self.assertTrue(len(trace)==1)
+        self.assertTrue(len(trace['Glucose'][0]==1))
+        return
+
+    @unittest.skipIf(HAVE_PYMC3, "only if PyMC3 is not imported")
+    def test_error_infer_independent(self):
+        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        with self.assertRaises(ImportError):
+            _ = errormodel.infer_independent(y_obs=1, draws=1)
         return
 
     def test_loglikelihood(self):
@@ -141,6 +225,22 @@ class BiomassErrorModelTest(unittest.TestCase):
         x_predicted = errormodel.predict_independent(y_obs=mu)
         
         self.assertTrue(numpy.allclose(x_predicted, x_original))
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, "requires PyMC3")
+    def test_infer_independent(self):
+        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        errormodel.theta_fitted = numpy.array([5, 5, 10, 0.5, 0, 1])
+        trace = errormodel.infer_independent(y_obs=1, draws=1)
+        self.assertTrue(len(trace)==1)
+        self.assertTrue(len(trace['BTM'][0]==1))
+        return
+
+    @unittest.skipIf(HAVE_PYMC3, "only if PyMC3 is not imported")
+    def test_error_infer_independent(self):
+        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        with self.assertRaises(ImportError):
+            errormodel.infer_independent(1)
         return
 
     def test_loglikelihood(self):

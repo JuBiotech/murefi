@@ -1,42 +1,63 @@
 import abc
 import numpy
 import scipy.optimize
+import sys
+try:
+    import pymc3 as pm
+except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
+    class _ImportWarnerPyMC3:
+        __all__ = []
 
-from .. core import ErrorModel
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
+            )
+
+    class _PyMC3:
+        def __getattr__(self, attr):
+            return _ImportWarnerPyMC3(attr)
+    
+    pm = _PyMC3()
+
+try:
+    import theano
+except ModuleNotFoundError:  # theano is optional, throw exception when used
+
+    class _ImportWarnerTheano:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "Theano is not installed. In order to use this function:\npip install theano"
+            )
+
+    class _Theano:
+        def __getattr__(self, attr):
+            return _ImportWarnerTheano(attr)
+    
+    theano = _Theano()
+
+from .. core import ErrorModel, log_log_logistic, polynomial, inverse_log_log_logistic
 
 
 class BiomassErrorModel(ErrorModel):
-    def logistic(self, y_hat, theta_log):
-        """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
-        
-        Arguments:
-            y_hat (array): realizations of the independent variable
-            theta_log (array): parameters of the log-log logistic model
-            I_x: inflection point (ln(x))
-            I_y: inflection point (ln(y))
-            Lmax: maximum value in log sapce
-            s: log-log steepness
+    def __init__(self, independent:str, dependent:str, key:str):
+        """ A parent class providing the general structure of an error model.
+
+        Args:
+            independent: independent variable of the error model
+            dependent: dependent variable of the error model
+            key: key found in the Timeseries objects of both the observed data and the prediction
         """
-        # IMPORTANT: Outside of this function, it is irrelevant that the correlation is modeled in log-log space.
-   
-        # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic BTM, 
-        # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
-        
-        I_x, I_y, Lmax, s = theta_log[:4]
-       
-        # For the same reason, y_hat (the x-axis) must be transformed into log-space.
-        y_hat = numpy.log(y_hat)
-        
-        y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
-        
-        # The logistic model predicts a log-transformed y_val, but outside of this
-        # function, the non-log value is expected.        
-        return numpy.exp(y_val)
-    
-    def polynomial(self, y_hat, theta_pol):
-        # Numpy's polynomial function wants to get the highest degree first
-        return numpy.polyval(theta_pol[::-1], y_hat)
-    
+        super().__init__(independent, dependent, key)
+        self.student_df=1
+          
     def predict_dependent(self, y_hat, *, theta=None):
         """Predicts the parameters mu and sigma of a student-t-distribution which characterises the dependent variable (backscatter) given values of the independent variable (BTM).
 
@@ -50,9 +71,9 @@ class BiomassErrorModel(ErrorModel):
         """
         if theta is None:
             theta = self.theta_fitted
-        mu = self.logistic(y_hat, theta[:4])
-        sigma = self.polynomial(y_hat,theta[4:])
-        df=1
+        mu = log_log_logistic(y_hat, theta[:4])
+        sigma = polynomial(y_hat,theta[4:])
+        df=self.student_df
         return mu, sigma, df
 
     def predict_independent(self, y_obs):
@@ -64,10 +85,55 @@ class BiomassErrorModel(ErrorModel):
         Returns:
             biomass (array): most likely biomass values (independent variable)
         """
-        I_x, I_y, Lmax, s, _, _ = self.theta_fitted
-        y_val = numpy.log(y_obs)
-        y_hat = I_x-((Lmax-I_y)/(2*s))*numpy.log((2*(Lmax-I_y)/(y_val+Lmax-2*I_y))-1)
-        return numpy.exp(y_hat)
+        y_hat = inverse_log_log_logistic(y_obs, self.theta_fitted)
+        return y_hat
+        
+    def theano_logistic(self, y_hat, theta_log):
+        """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
+        
+        Arguments:
+            y_hat (array): realizations of the independent variable
+            theta_log (array): parameters of the log-log logistic model
+            I_x: inflection point (ln(x))
+            I_y: inflection point (ln(y))
+            Lmax: maximum value in log sapce
+            s: log-log slope
+        """
+        # IMPORTANT: Outside of this function, it is irrelevant that the correlation is modeled in log-log space.
+        # Since the logistic function is assumed for logarithmic backscatter in dependency of logarithmic NTU,
+        # the interpretation of (I_x, I_y, Lmax and s) is in terms of log-space.
+        I_x, I_y, Lmax = theta_log[:3]
+        s = theta_log[3:]
+
+        # For the same reason, y_hat (the x-axis) must be transformed into log-space.
+        y_hat = theano.tensor.log(y_hat)
+        y_val = 2.0 * I_y - Lmax + (2.0 * (Lmax - I_y)) / (1.0 + theano.tensor.exp(-4.0*s * (y_hat - I_x)))
+
+        # The logistic model predicts a log-transformed y_val, but outside of this
+        # function, the non-log value is expected.
+        return theano.tensor.exp(y_val)
+
+    def infer_independent(self, y_obs, *, btm_lower=0, btm_upper=17, draws=1000):
+        """Infer the posterior distribution of the independent variable given the observations of one point of the dependent variable.
+        
+        Args:
+            y_obs (array): observed OD measurements
+            btm_lower (int): lower limit for uniform distribution of btm prior
+            btm_upper (int): upper limit for uniform distribution of btm prior
+            student_df (int): df of student-t-likelihood (default: 1)
+            draws (int): number of samples to draw (handed to pymc3.sample)
+        
+        Returns:
+            trace: trace of the posterior distribution of inferred biomass concentration
+        """ 
+        theta = self.theta_fitted
+        with pm.Model() as model:
+            btm = pm.Uniform('BTM', lower=btm_lower, upper=btm_upper, shape=(1,))
+            mu = self.theano_logistic(btm, theta[:4])
+            sd = polynomial(btm, theta[4:])
+            ll = pm.StudentT('likelihood', nu=self.student_df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
+            trace = pm.sample(draws)
+        return trace
         
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):
         """Loglikelihood of observation (dependent variable) given the independent variable
