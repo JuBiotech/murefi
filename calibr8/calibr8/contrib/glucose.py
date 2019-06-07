@@ -82,13 +82,16 @@ class GlucoseErrorModel(ErrorModel):
         
         Args:
             y_obs (array): observed OD measurements
+            glc_lower (int): lower limit for uniform distribution of glucose prior
+            glc_upper (int): lower limit for uniform distribution of glucose prior
+            draws (int): number of samples to draw (handed to pymc3.sample)
         
         Returns:
             trace: trace of the posterior distribution of inferred glucose concentration
         """ 
         theta = self.theta_fitted
         with pm.Model() as model:
-            glc = pm.Uniform('Glucose', lower=0, upper=100, shape=(1,))
+            glc = pm.Uniform('Glucose', lower=glc_lower, upper=glc_upper, shape=(1,))
             mu, sd, df = self.predict_dependent(glc, theta=theta)
             ll = pm.StudentT('likelihood', nu=df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
             trace = pm.sample(draws)

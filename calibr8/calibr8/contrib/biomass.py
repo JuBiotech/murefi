@@ -1,6 +1,4 @@
 import abc
-import logging
-logger = logging.getLogger('calibr8.contrib.biomass')
 import numpy  
 import numpy
 import scipy.optimize
@@ -8,7 +6,7 @@ import sys
 try:
     import pymc3 as pm
 except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
-    class _ImportWarner:
+    class _ImportWarnerPyMC3:
         __all__ = []
 
         def __init__(self, attr):
@@ -21,7 +19,7 @@ except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
 
     class _PyMC3:
         def __getattr__(self, attr):
-            return _ImportWarner(attr)
+            return _ImportWarnerPyMC3(attr)
     
     pm = _PyMC3()
 
@@ -29,7 +27,7 @@ try:
     import theano
 except ModuleNotFoundError:  # theano is optional, throw exception when used
 
-    class _ImportWarner:
+    class _ImportWarnerTheano:
         __all__ = []
 
         def __init__(self, attr):
@@ -42,7 +40,7 @@ except ModuleNotFoundError:  # theano is optional, throw exception when used
 
     class _Theano:
         def __getattr__(self, attr):
-            return _ImportWarner(attr)
+            return _ImportWarnerTheano(attr)
     
     theano = _Theano()
 
@@ -108,6 +106,18 @@ class BiomassErrorModel(ErrorModel):
         return theano.tensor.exp(y_val)
 
     def infer_independent(self, y_obs, *, btm_lower=0, btm_upper=17, student_df=1, draws=1000):
+        """Infer the posterior distribution of the independent variable given the observations of one point of the dependent variable.
+        
+        Args:
+            y_obs (array): observed OD measurements
+            btm_lower (int): lower limit for uniform distribution of btm prior
+            btm_upper (int): lower limit for uniform distribution of btm prior
+            student_df (int): df of student-t-likelihood (default: 1)
+            draws (int): number of samples to draw (handed to pymc3.sample)
+        
+        Returns:
+            trace: trace of the posterior distribution of inferred biomass concentration
+        """ 
         theta = self.theta_fitted
         with pm.Model() as model:
             btm = pm.Uniform('BTM', lower=btm_lower, upper=btm_upper, shape=(1,))

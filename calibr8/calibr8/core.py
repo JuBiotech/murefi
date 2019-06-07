@@ -89,32 +89,35 @@ class ErrorModel(object):
         self.theta_fitted = fit.x
         return fit
 
+
 def logistic(y_hat, theta):
         """Logistic model of the expected measurement outcomes, given a true independent variable.
         
         Arguments:
-            y_hat (array): realizations of the independent variable
-            theta (array): parameters of the logistic model
-            I_x: x-value at inflection point
-            I_y: y-value at inflection point
-            Lmax: maximum value
-            s: slope at the inflection point
+                y_hat (array): realizations of the independent variable
+                theta (array): parameters of the logistic model
+                I_x: x-value at inflection point
+                I_y: y-value at inflection point
+                Lmax: maximum value
+                s: slope at the inflection point
         """
-        I_x, I_y, Lmax, s = theta[:4]        
+        I_x, I_y, Lmax, s = theta[:4]
+        y_hat = numpy.array(y_hat)      
         y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
              
         return y_val
+
 
 def log_log_logistic(y_hat, theta_log):
         """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
         
         Arguments:
-            y_hat (array): realizations of the independent variable
-            theta_log (array): parameters of the log-log logistic model
-            I_x: inflection point (ln(x))
-            I_y: inflection point (ln(y))
-            Lmax: maximum value in log sapce
-            s: log-log steepness
+                y_hat (array): realizations of the independent variable
+                theta_log (array): parameters of the log-log logistic model
+                I_x: inflection point (ln(x))
+                I_y: inflection point (ln(y))
+                Lmax: maximum value
+                s: slope at the inflection point
         """
         I_x, I_y, Lmax, s = theta_log[:4]
         y_hat = numpy.log(y_hat)    
@@ -122,16 +125,17 @@ def log_log_logistic(y_hat, theta_log):
              
         return numpy.exp(y_val)
 
+
 def xlog_logistic(y_hat, theta_log):
         """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
         
         Arguments:
-            y_hat (array): realizations of the independent variable
-            theta_log (array): parameters of the log-log logistic model
-            I_x: inflection point (ln(x))
-            I_y: inflection point (ln(y))
-            Lmax: maximum value in log sapce
-            s: log-log steepness
+                y_hat (array): realizations of the independent variable
+                theta_log (array): parameters of the log-log logistic model
+                I_x: inflection point (ln(x))
+                I_y: inflection point (y)
+                Lmax: maximum value
+                s: slope at the inflection point
         """
         I_x, I_y, Lmax, s = theta_log[:4]
         y_hat = numpy.log(y_hat)    
@@ -139,21 +143,24 @@ def xlog_logistic(y_hat, theta_log):
              
         return y_val
 
+
 def ylog_logistic(y_hat, theta_log):
         """Log-log logistic model of the expected measurement outcomes, given a true independent variable.
         
         Arguments:
-            y_hat (array): realizations of the independent variable
-            theta_log (array): parameters of the log-log logistic model
-            I_x: inflection point (ln(x))
-            I_y: inflection point (ln(y))
-            Lmax: maximum value in log sapce
-            s: log-log steepness
+                y_hat (array): realizations of the independent variable
+                theta_log (array): parameters of the log-log logistic model
+                I_x: inflection point (x)
+                I_y: inflection point (ln(y))
+                Lmax: maximum value in log sapce
+                s: slope at the inflection point
         """
-        I_x, I_y, Lmax, s = theta_log[:4]    
+        I_x, I_y, Lmax, s = theta_log[:4]
+        y_hat = numpy.array(y_hat) 
         y_val = 2 * I_y - Lmax + (2 * (Lmax - I_y)) / (1 + numpy.exp(-2*s/(Lmax - I_y) * (y_hat - I_x)))
              
         return numpy.exp(y_val)
+
 
 def polynomial(y_hat, theta_pol):
     # Numpy's polynomial function wants to get the highest degree first

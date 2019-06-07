@@ -47,16 +47,45 @@ class ErrorModelTest(unittest.TestCase):
             _ = errormodel.fit(independent=y_hat, dependent=y_obs, theta_guessed=None)
         return
     
-    def test_fit(self):
-        independent = 'X'
-        dependent = 'BS'
-        key = 'X'
-        y_hat = numpy.array([1,2,3])
-        y_obs = numpy.array([4,5,6])
-        theta_guessed= [0]
-        errormodel = calibr8.ErrorModel(independent, dependent, key)
-        with self.assertRaises(TypeError):
-            _ = errormodel.fit(y_hat, y_obs, theta_guessed)
+
+class LogisticTest(unittest.TestCase):
+    def test_logistic(self):
+        y_hat=numpy.array([1,2,4])
+        theta= [2,2,4,1]
+        expected = 2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(y_hat-2)))
+        true = calibr8.logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        return       
+    
+    def test_log_log_logistic(self):
+        y_hat=numpy.array([1,2,4])
+        theta= [2,2,4,1]
+        expected = numpy.exp(2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(numpy.log(y_hat)-2))))
+        true = calibr8.log_log_logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        expected = numpy.exp(calibr8.logistic(numpy.log(y_hat), theta))   
+        self.assertTrue(numpy.array_equal(true, expected))
+        return
+
+    def test_xlog_logistic(self):
+        y_hat=numpy.array([1,2,4])
+        theta= [2,2,4,1]
+        expected = 2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(numpy.log(y_hat)-2)))
+        true = calibr8.xlog_logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        expected = calibr8.logistic(numpy.log(y_hat), theta)
+        self.assertTrue(numpy.array_equal(true, expected))        
+        return
+
+    def test_ylog_logistic(self):
+        y_hat=numpy.log([1,2,4])
+        theta= [2,2,4,1]
+        expected = numpy.exp(2*2-4+(2*(4-2))/(1+numpy.exp(-2*1/(4-2)*(y_hat-2))))
+        true = calibr8.ylog_logistic(y_hat, theta)
+        self.assertTrue(numpy.array_equal(true, expected))
+        expected = numpy.exp(calibr8.logistic(y_hat, theta))
+        self.assertTrue(numpy.array_equal(true, expected))
+        return
 
 
 class GlucoseErrorModelTest(unittest.TestCase):
@@ -98,11 +127,11 @@ class GlucoseErrorModelTest(unittest.TestCase):
         self.assertTrue(len(trace['Glucose'][0]==1))
         return
 
-    @unittest.skipIf(HAVE_PYMC3, "only without PyMC3")
+    @unittest.skipIf(HAVE_PYMC3, "only if PyMC3 is not imported")
     def test_error_infer_independent(self):
         errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
         with self.assertRaises(ImportError):
-            errormodel.infer_independent(1)
+            _ = errormodel.infer_independent(y_obs=1, draws=1)
         return
 
     def test_loglikelihood(self):
@@ -175,7 +204,7 @@ class BiomassErrorModelTest(unittest.TestCase):
         self.assertTrue(len(trace['BTM'][0]==1))
         return
 
-    @unittest.skipIf(HAVE_PYMC3, "only without PyMC3")
+    @unittest.skipIf(HAVE_PYMC3, "only if PyMC3 is not imported")
     def test_error_infer_independent(self):
         errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
         with self.assertRaises(ImportError):
