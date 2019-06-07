@@ -7,6 +7,13 @@ import scipy.stats as stats
 import calibr8
 
 
+try:
+    import pymc3
+    HAVE_PYMC3 = True
+except ModuleNotFoundError:
+    HAVE_PYMC3 = False
+
+
 dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
        
 
@@ -81,6 +88,22 @@ class GlucoseErrorModelTest(unittest.TestCase):
         self.assertTrue(numpy.array_equal(sd, [0.1, 0.1, 0.1]))
         self.assertTrue(numpy.allclose(x_predicted, x_original))
         return
+    
+    @unittest.skipUnless(HAVE_PYMC3, "requires PyMC3")
+    def test_infer_independent(self):
+        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        errormodel.theta_fitted = [0, 2, 0.1]
+        trace = errormodel.infer_independent(y_obs=1, draws=1)
+        self.assertTrue(len(trace)==1)
+        self.assertTrue(len(trace['Glucose'][0]==1))
+        return
+
+    @unittest.skipIf(HAVE_PYMC3, "only without PyMC3")
+    def test_error_infer_independent(self):
+        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        with self.assertRaises(ImportError):
+            errormodel.infer_independent(1)
+        return
 
     def test_loglikelihood(self):
         independent = 'Glu'
@@ -141,6 +164,22 @@ class BiomassErrorModelTest(unittest.TestCase):
         x_predicted = errormodel.predict_independent(y_obs=mu)
         
         self.assertTrue(numpy.allclose(x_predicted, x_original))
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, "requires PyMC3")
+    def test_infer_independent(self):
+        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        errormodel.theta_fitted = numpy.array([5, 5, 10, 0.5, 0, 1])
+        trace = errormodel.infer_independent(y_obs=1, draws=1)
+        self.assertTrue(len(trace)==1)
+        self.assertTrue(len(trace['BTM'][0]==1))
+        return
+
+    @unittest.skipIf(HAVE_PYMC3, "only without PyMC3")
+    def test_error_infer_independent(self):
+        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        with self.assertRaises(ImportError):
+            errormodel.infer_independent(1)
         return
 
     def test_loglikelihood(self):

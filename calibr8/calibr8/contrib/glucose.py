@@ -77,7 +77,7 @@ class GlucoseErrorModel(ErrorModel):
         mu = (y_obs - a) / b
         return mu
 
-    def infer_independent(self, y_obs):
+    def infer_independent(self, y_obs, *, glc_lower=0, glc_upper=100, draws=1000):
         """Infer the posterior distribution of the independent variable given the observations of one point of the dependent variable.
         
         Args:
@@ -89,9 +89,9 @@ class GlucoseErrorModel(ErrorModel):
         theta = self.theta_fitted
         with pm.Model() as model:
             glc = pm.Uniform('Glucose', lower=0, upper=100, shape=(1,))
-            mu, sd, df = self.predict_dependent(glc, theta)
+            mu, sd, df = self.predict_dependent(glc, theta=theta)
             ll = pm.StudentT('likelihood', nu=df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
-            trace = pm.sample(1000)
+            trace = pm.sample(draws)
         return trace
 
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):

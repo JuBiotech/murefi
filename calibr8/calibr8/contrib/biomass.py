@@ -107,14 +107,14 @@ class BiomassErrorModel(ErrorModel):
         # function, the non-log value is expected.
         return theano.tensor.exp(y_val)
 
-    def infer_independent(self, y_obs):
+    def infer_independent(self, y_obs, *, btm_lower=0, btm_upper=17, student_df=1, draws=1000):
         theta = self.theta_fitted
         with pm.Model() as model:
-            btm = pm.Uniform('BTM', lower=0, upper=17, shape=(1,))
+            btm = pm.Uniform('BTM', lower=btm_lower, upper=btm_upper, shape=(1,))
             mu = self.theano_logistic(btm, theta[:4])
             sd = polynomial(btm,theta[4:])
-            ll = pm.StudentT('likelihood', nu=1, mu=mu, sd=sd, observed=y_obs, shape=(1,))
-            trace = pm.sample(1000)
+            ll = pm.StudentT('likelihood', nu=student_df, mu=mu, sd=sd, observed=y_obs, shape=(1,))
+            trace = pm.sample(draws)
         return trace
         
     def loglikelihood(self, *, y_obs,  y_hat, theta=None):
