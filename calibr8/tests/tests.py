@@ -21,20 +21,17 @@ class ErrorModelTest(unittest.TestCase):
     def test_init(self):
         independent = 'X'
         dependent = 'BS'
-        key = 'X'
-        errormodel = calibr8.ErrorModel(independent, dependent, key)
-        self.assertEqual(errormodel.independent, independent)
-        self.assertEqual(errormodel.dependent, dependent)
-        self.assertEqual(errormodel.key, key)
+        errormodel = calibr8.ErrorModel(independent, dependent)
+        self.assertEqual(errormodel.independent_key, independent)
+        self.assertEqual(errormodel.dependent_key, dependent)
         self.assertEqual(errormodel.theta_fitted, None)
     
     def test_exceptions(self):
         independent = 'X'
         dependent = 'BS'
-        key = 'X'
         y_hat = numpy.array([1,2,3])
         y_obs = numpy.array([4,5,6])
-        errormodel = calibr8.ErrorModel(independent, dependent, key)
+        errormodel = calibr8.ErrorModel(independent, dependent)
         with self.assertRaises(NotImplementedError):
             _ = errormodel.predict_dependent(y_hat)
         with self.assertRaises(NotImplementedError):
@@ -122,12 +119,11 @@ class LogisticTest(unittest.TestCase):
 
 class GlucoseErrorModelTest(unittest.TestCase):
     def test_predict_dependent(self):
-        independent = 'Glu'
+        independent = 'S'
         dependent = 'OD'
-        key = 'S'
         y_hat = numpy.array([1,2,3])
         theta = [0,0,0]
-        errormodel = calibr8.GlucoseErrorModel(independent, dependent, key)
+        errormodel = calibr8.GlucoseErrorModel(independent, dependent)
         errormodel.theta_fitted = [0,1,0.1]
         with self.assertRaises(TypeError):
             _ = errormodel.predict_dependent(y_hat, theta)
@@ -138,7 +134,7 @@ class GlucoseErrorModelTest(unittest.TestCase):
         return
     
     def test_predict_independent(self):
-        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        errormodel = calibr8.GlucoseErrorModel('S', 'OD')
         errormodel.theta_fitted = [0, 2, 0.1]
         
         x_original = numpy.array([4, 5, 6])
@@ -152,7 +148,7 @@ class GlucoseErrorModelTest(unittest.TestCase):
     
     @unittest.skipUnless(HAVE_PYMC3, "requires PyMC3")
     def test_infer_independent(self):
-        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        errormodel = calibr8.GlucoseErrorModel('S', 'OD')
         errormodel.theta_fitted = [0, 2, 0.1]
         trace = errormodel.infer_independent(y_obs=1, draws=1)
         self.assertTrue(len(trace)==1)
@@ -161,18 +157,17 @@ class GlucoseErrorModelTest(unittest.TestCase):
 
     @unittest.skipIf(HAVE_PYMC3, "only if PyMC3 is not imported")
     def test_error_infer_independent(self):
-        errormodel = calibr8.GlucoseErrorModel('Glu', 'OD', 'S')
+        errormodel = calibr8.GlucoseErrorModel('S', 'OD')
         with self.assertRaises(ImportError):
             _ = errormodel.infer_independent(y_obs=1, draws=1)
         return
 
     def test_loglikelihood(self):
-        independent = 'Glu'
+        independent = 'S'
         dependent = 'OD'
-        key = 'S'
         y_hat = numpy.array([1,2,3])
         y_obs = numpy.array([1,2,3])
-        errormodel = calibr8.GlucoseErrorModel(independent, dependent, key)
+        errormodel = calibr8.GlucoseErrorModel(independent, dependent)
         errormodel.theta_fitted = [0,1,0.1]
         with self.assertRaises(TypeError):
             _ = errormodel.loglikelihood(y_obs, y_hat=y_hat)
@@ -189,10 +184,9 @@ class GlucoseErrorModelTest(unittest.TestCase):
     def test_loglikelihood_without_fit(self):
         independent = 'Glu'
         dependent = 'OD'
-        key = 'S'
         y_hat = numpy.array([1,2,3])
         y_obs = numpy.array([1,2,3])
-        errormodel = calibr8.GlucoseErrorModel(independent, dependent, key)
+        errormodel = calibr8.GlucoseErrorModel(independent, dependent)
         with self.assertRaises(Exception):
             _= errormodel.loglikelihood(y_obs=y_obs, y_hat=y_hat)
         return
@@ -202,9 +196,8 @@ class BiomassErrorModelTest(unittest.TestCase):
     def test_predict_dependent(self):
         independent = 'BTM'
         dependent = 'BS'
-        key = 'X'
         y_hat = numpy.array([1,10])
-        errormodel = calibr8.BiomassErrorModel(independent, dependent, key)
+        errormodel = calibr8.BiomassErrorModel(independent, dependent)
         errormodel.theta_fitted = numpy.array([5,5,10,0.5,1,0])
         theta = numpy.array([0,0,0,0,0])
         with self.assertRaises(TypeError):
@@ -217,7 +210,7 @@ class BiomassErrorModelTest(unittest.TestCase):
         return
     
     def test_predict_independent(self):
-        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        errormodel = calibr8.BiomassErrorModel('X', 'BS')
         errormodel.theta_fitted = numpy.array([5, 5, 10, 0.5, 0, 1])
         
         x_original = numpy.linspace(0.01, 30, 20)
@@ -229,7 +222,7 @@ class BiomassErrorModelTest(unittest.TestCase):
 
     @unittest.skipUnless(HAVE_PYMC3, "requires PyMC3")
     def test_infer_independent(self):
-        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        errormodel = calibr8.BiomassErrorModel('X', 'BS')
         errormodel.theta_fitted = numpy.array([5, 5, 10, 0.5, 0, 1])
         trace = errormodel.infer_independent(y_obs=1, draws=1)
         self.assertTrue(len(trace)==1)
@@ -238,18 +231,17 @@ class BiomassErrorModelTest(unittest.TestCase):
 
     @unittest.skipIf(HAVE_PYMC3, "only if PyMC3 is not imported")
     def test_error_infer_independent(self):
-        errormodel = calibr8.BiomassErrorModel('BTM', 'BS', 'X')
+        errormodel = calibr8.BiomassErrorModel('X', 'BS')
         with self.assertRaises(ImportError):
             errormodel.infer_independent(1)
         return
 
     def test_loglikelihood(self):
-        independent = 'BTM'
+        independent = 'X'
         dependent = 'BS'
-        key = 'X'
         y_hat = numpy.array([1,2,3])
         y_obs = numpy.array([1,2,3])
-        errormodel = calibr8.BiomassErrorModel(independent, dependent, key)
+        errormodel = calibr8.BiomassErrorModel(independent, dependent)
         errormodel.theta_fitted = numpy.array([5,5,10,0.5,0,1])
         with self.assertRaises(TypeError):
             _ = errormodel.loglikelihood(y_obs, y_hat=y_hat, theta = errormodel.theta_fitted)
@@ -265,12 +257,11 @@ class BiomassErrorModelTest(unittest.TestCase):
         return
     
     def test_loglikelihood_without_fit(self):
-        independent = 'BTM'
+        independent = 'X'
         dependent = 'BS'
-        key = 'X'
         y_hat = numpy.array([1,2,3])
         y_obs = numpy.array([1,2,3])
-        errormodel = calibr8.BiomassErrorModel(independent, dependent, key)
+        errormodel = calibr8.BiomassErrorModel(independent, dependent)
         with self.assertRaises(Exception):
             _= errormodel.loglikelihood(y_obs=y_obs, y_hat=y_hat)
         return

@@ -47,7 +47,7 @@ from .. core import ErrorModel, log_log_logistic, polynomial, inverse_log_log_lo
 
 
 class BiomassErrorModel(ErrorModel):
-    def __init__(self, independent:str, dependent:str, key:str):
+    def __init__(self, independent:str, dependent:str):
         """ A parent class providing the general structure of an error model.
 
         Args:
@@ -55,7 +55,7 @@ class BiomassErrorModel(ErrorModel):
             dependent: dependent variable of the error model
             key: key found in the Timeseries objects of both the observed data and the prediction
         """
-        super().__init__(independent, dependent, key)
+        super().__init__(independent, dependent)
         self.student_df=1
           
     def predict_dependent(self, y_hat, *, theta=None):

@@ -27,7 +27,7 @@ from .. core import ErrorModel
 
 
 class GlucoseErrorModel(ErrorModel):
-    def __init__(self, independent:str, dependent:str, key:str):
+    def __init__(self, independent:str, dependent:str):
         """ A parent class providing the general structure of an error model.
 
         Args:
@@ -35,7 +35,7 @@ class GlucoseErrorModel(ErrorModel):
             dependent: dependent variable of the error model
             key: key found in the Timeseries objects of both the observed data and the prediction
         """
-        super().__init__(independent, dependent, key)
+        super().__init__(independent, dependent)
         self.student_df=1
         
     def linear(self, y_hat, theta_lin):

@@ -6,17 +6,15 @@ import scipy.optimize
 class ErrorModel(object):
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, independent:str, dependent:str, key:str):
+    def __init__(self, independent_key:str, dependent_key:str):
         """ A parent class providing the general structure of an error model.
 
         Args:
-            independent: independent variable of the error model
-            dependent: dependent variable of the error model
-            key: key found in the Timeseries objects of both the observed data and the prediction
+            independent_key: key of predicted Timeseries (independent variable of the error model)
+            dependent_key: key of observed Timeseries (dependent variable of the error model)
         """
-        self.independent = independent
-        self.dependent = dependent
-        self.key = key
+        self.independent_key = independent_key
+        self.dependent_key = dependent_key
         self.theta_fitted = None
         super().__init__()
     
