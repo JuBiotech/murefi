@@ -6,13 +6,13 @@ from . core import Replicate, Timeseries, Dataset, ParameterMapping
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
-    def __init__(self, keys_y:tuple):
+    def __init__(self, independent_keys:tuple):
         """Create a dynamic model.
         Args:
-            keys_y (iterable): Names of observables
+            independent_keys (iterable): formula symbols of observables
         """
-        self.keys_y:tuple = tuple(keys_y)
-        self.n_y:int = len(self.keys_y)
+        self.independent_keys:tuple = tuple(independent_keys)
+        self.n_y:int = len(self.independent_keys)
         return super().__init__()
     
     @abc.abstractmethod
@@ -49,7 +49,7 @@ class BaseODEModel(object):
             y = y[1:]
         y_hat_dict = {
             key : y[:,i] 
-            for i, key in enumerate(self.keys_y)
+            for i, key in enumerate(self.independent_keys)
         }
         
         return y_hat_dict
