@@ -115,4 +115,4 @@ class BaseODEModel(object):
             data = replicates
             Prediction[replicate_key] = self.predict_replicate(theta_dict[replicate_key], data)
         return Prediction
-    
+        
