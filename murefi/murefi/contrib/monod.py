@@ -3,6 +3,10 @@ from .. ode import BaseODEModel
 
 class MonodModel(BaseODEModel):
     """ Class specifying the model for parameter fitting as Monod kinetics. """
+
+    def __init__(self):
+        super().__init__(independent_keys=['S', 'X'])
+
     def dydt(self, y, t, theta):
         """First derivative of the transient variables.
         Args:
