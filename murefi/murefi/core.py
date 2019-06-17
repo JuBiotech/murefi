@@ -88,6 +88,26 @@ class Replicate(collections.OrderedDict):
                 x_bmask[ykey] = numpy.repeat(False, len(x_any))
         return x_bmask
     
+    @staticmethod
+    def make_template(tmin:float, tmax:float, independent_keys:list, iid:str=None, N:int=100):
+        """Create a dense template Replicate for plotting-predictions.
+
+        Args:
+            tmin (float): first timepoint
+            tmax (float): last timepoint
+            independent_keys (list): list of independent variable keys to include in the template
+            iid (str): optional replicate id
+            N (int): total number of timepoints (default: 100)
+        
+        Returns:
+            replicate (Replicate): replicate object containing dense timeseries with random y data
+        """
+        x = numpy.linspace(tmin, tmax, N)
+        rep = Replicate(iid)
+        for yk in independent_keys:
+            rep[yk] = Timeseries(yk, x, numpy.empty((N,)))
+        return rep
+    
     
 class Dataset(collections.OrderedDict):
     """A dataset contains one or more Replicates."""
