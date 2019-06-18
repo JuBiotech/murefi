@@ -137,6 +137,16 @@ class TestReplicate(unittest.TestCase):
         self.assertTrue(numpy.array_equal(result['P'], [False,False,False,False,False,False,False,False]))
         return
 
+    def test_make_template(self):
+        template = murefi.Replicate.make_template(0.5, 3.5, independent_keys=['A', 'B', 'C'], N=20)
+        self.assertIn('A', template)
+        self.assertIn('B', template)
+        self.assertIn('C', template)
+        self.assertTrue(template['A'].x[0] == 0.5)
+        self.assertTrue(template['A'].x[-1] == 3.5)
+        self.assertTrue(len(template['A'].x) == 20)
+        return
+
 
 if __name__ == '__main__':
     unittest.main(exit=False)

@@ -47,19 +47,18 @@ from .. core import ErrorModel, log_log_logistic, polynomial, inverse_log_log_lo
 
 
 class BiomassErrorModel(ErrorModel):
-    def __init__(self, independent:str, dependent:str, key:str):
-        """ A parent class providing the general structure of an error model.
+    def __init__(self, independent_key:str, dependent_key:str):
+        """ A class for modeling the error of backscatter measurements of biomass.
 
         Args:
-            independent: independent variable of the error model
-            dependent: dependent variable of the error model
-            key: key found in the Timeseries objects of both the observed data and the prediction
+            independent: biomass (cell dry weight)
+            dependent: backscatter measurements
         """
-        super().__init__(independent, dependent, key)
+        super().__init__(independent_key, dependent_key)
         self.student_df=1
           
     def predict_dependent(self, y_hat, *, theta=None):
-        """Predicts the parameters mu and sigma of a student-t-distribution which characterises the dependent variable (backscatter) given values of the independent variable (BTM).
+        """Predicts the parameters mu and sigma of a student-t-distribution which characterises the dependent variable (backscatter) given values of the independent variable (CDW).
 
         Args:
             y_hat (array): values of the independent variable
@@ -118,8 +117,8 @@ class BiomassErrorModel(ErrorModel):
         
         Args:
             y_obs (array): observed OD measurements
-            btm_lower (int): lower limit for uniform distribution of btm prior
-            btm_upper (int): upper limit for uniform distribution of btm prior
+            btm_lower (int): lower limit for uniform distribution of cdw prior
+            btm_upper (int): upper limit for uniform distribution of cdw prior
             student_df (int): df of student-t-likelihood (default: 1)
             draws (int): number of samples to draw (handed to pymc3.sample)
         
