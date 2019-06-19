@@ -111,7 +111,7 @@ class ParameterMapTest(unittest.TestCase):
 class TestDataset(unittest.TestCase):
     def test_dataset(self):
         rep = murefi.Replicate('A01')
-        rep['S'] = murefi.Timeseries('S', [0,2,3,  5,  8  ], [1,2,3,4,5])
+        rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', timeseries_key='S_observed')
         ds = murefi.Dataset()
         ds['A01'] = rep
         self.assertTrue('A01' in ds)
@@ -122,19 +122,19 @@ class TestDataset(unittest.TestCase):
 class TestReplicate(unittest.TestCase):
     def test_x_any(self):
         rep = murefi.Replicate('A01')
-        rep['S'] = murefi.Timeseries('S', [0,2,3,  5,  8  ], [1,2,3,4,5])
-        rep['X'] = murefi.Timeseries('X', [  2,3,4,  6,8,9], [1,2,3,4,5,6])
+        rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', timeseries_key='S_observed')
+        rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', timeseries_key='X_observed')
         self.assertTrue(numpy.array_equal(rep.x_any, [0,2,3,4,5,6,8,9]))
         return
 
     def test_observation_booleans(self):
         rep = murefi.Replicate('A01')
-        rep['S'] = murefi.Timeseries('S', [0,2,3,  5,  8  ], [1,2,3,4,5])
-        rep['X'] = murefi.Timeseries('X', [  2,3,4,  6,8,9], [1,2,3,4,5,6])
-        result = rep.get_observation_booleans(['S', 'X', 'P'])
-        self.assertTrue(numpy.array_equal(result['S'], [True,True,True,False,True,False,True,False]))
-        self.assertTrue(numpy.array_equal(result['X'], [False,True,True,True,False,True,True,True]))
-        self.assertTrue(numpy.array_equal(result['P'], [False,False,False,False,False,False,False,False]))
+        rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', timeseries_key='S_observed')
+        rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', timeseries_key='X_observed')
+        result = rep.get_observation_booleans(['S_observed', 'X_observed', 'P_observed'])
+        self.assertTrue(numpy.array_equal(result['S_observed'], [True,True,True,False,True,False,True,False]))
+        self.assertTrue(numpy.array_equal(result['X_observed'], [False,True,True,True,False,True,True,True]))
+        self.assertTrue(numpy.array_equal(result['P_observed'], [False,False,False,False,False,False,False,False]))
         return
 
     def test_make_template(self):
