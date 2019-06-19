@@ -10,33 +10,33 @@ logger = logging.getLogger(__name__)
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
-    def __init__(self, x, y, *, independent_key:str, timeseries_key:str):
+    def __init__(self, x, y, *, independent_key:str, dependent_key:str):
         """Bundles [x] and [y] into a timeseries.
 
         Args:
             x (list or ndarray): timepoints
             y (list of ndarray): observations (same length as x)
             independent_key (str): key of the independent variable (no . characters allowed)
-            timeseries_key (str): key of the y-variable of the timeseries (dependent_key if it's observed data, independent_key if it's a prediction)
+            dependent_key (str): key of the observed timeseries (no . characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
         assert isinstance(y, (list, numpy.ndarray))
         assert isinstance(independent_key, str)
-        assert isinstance(timeseries_key, str)
+        assert isinstance(dependent_key, str)
         assert len(x) == len(y), 'x and y must have the same length.'
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
         self.x = numpy.array(x)
         self.y = numpy.array(y)        
         self.independent_key = independent_key
-        self.timeseries_key = timeseries_key
+        self.dependent_key = dependent_key
         return super().__init__()
 
     def __len__(self):
         return len(self.x)
 
     def __str__(self):
-        return f'{self.timeseries_key} [:{len(self)}]'
+        return f'{self.dependent_key} [:{len(self)}]'
 
     def __repr__(self):
         return self.__str__()
@@ -60,7 +60,7 @@ class Replicate(collections.OrderedDict):
         if len(self) > 0:
             return numpy.unique(numpy.hstack([
                 ts.x
-                for tskey, ts in self.items()
+                for _, ts in self.items()
             ]))
         else:
             return self.default_x_any
@@ -72,7 +72,7 @@ class Replicate(collections.OrderedDict):
 
     def __setitem__(self, key:str, value:Timeseries):
         assert isinstance(value, Timeseries)
-        assert key == value.timeseries_key, f'The key in the Replicate ({key}) must be equal to the Timeseries.timeseries_key ({value.timeseries_key})'
+        assert key == value.dependent_key, f'The key in the Replicate ({key}) must be equal to the Timeseries.dependent_key ({value.dependent_key})'
         return super().__setitem__(key, value)
     
     def get_observation_booleans(self, keys_y:list) -> dict:
@@ -110,7 +110,7 @@ class Replicate(collections.OrderedDict):
         x = numpy.linspace(tmin, tmax, N)
         rep = Replicate(iid)
         for yk in independent_keys:
-            rep[yk] = Timeseries(x, numpy.empty((N,)), independent_key=yk, timeseries_key=yk)
+            rep[yk] = Timeseries(x, numpy.empty((N,)), independent_key=yk, dependent_key=yk)
         return rep
     
     
