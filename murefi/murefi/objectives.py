@@ -14,17 +14,27 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
         par_map (ParameterMapping):
         error_models: list of calibr8.ErrorModel objects
     """
+    
+    mappings = {
+        iid : [
+            # pairs of ErrorModel and observed Timeseries
+            (em, rep_obs[em.dependent_key])
+            for em in error_models
+            if em.dependent_key in rep_obs
+        ]
+        for iid, rep_obs in dataset.items()
+    }
+        
     def negative_loglikelihood_dataset(theta_fit):
         L = 0
         prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
-        for replicate_key, replicates in dataset.items():
-            data = replicates
-            predicted_replicate = prediction[replicate_key]
-            # iterate over timeseries/error_models
-            for error_model in error_models:
-                key_pred_data = error_model.key
-                if key_pred_data in data.keys():
-                    L += error_model.loglikelihood(y_obs=data[key_pred_data].y, y_hat=predicted_replicate[key_pred_data].y)
+
+        for iid, em_ts_list in mappings.items():
+            predicted_replicate = prediction[iid]
+            for (em, observed_ts) in em_ts_list:
+                predicted_ts = predicted_replicate[em.dependent_key]
+                L += em.loglikelihood(y_obs=observed_ts.y, y_hat=predicted_ts.y)
+        
         if numpy.isnan(L):
             return numpy.inf
         return -L

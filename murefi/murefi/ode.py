@@ -68,28 +68,20 @@ class BaseODEModel(object):
         theta = parameters[self.n_y:]
         x = template.x_any
         y_hat_all = self.solver(y0, x, theta)
-        
-        bmask = template.get_observation_booleans(list(template.keys()))
-        
+
         #Get only those y_hat values for which data exist
         #All keys in bmask corresponds to available data for observables
-        y_hat = {}
-        for key in y_hat_all.keys():
-             if key in list(bmask.keys()):
-                    y_hat[key] = y_hat_all[key][bmask[key]]
-             
-        x_hat = {
-            key : template[key].x 
-            for key in y_hat_all.keys() 
-            if key in list(bmask.keys())
-        }
-                    
-        #Convert x_hat and y_hat entries in Timeseries objects which are fed to a new Replicate object pred
-        
-        pred = Replicate(template.iid )
-        for key in y_hat.keys():
-            pred[key] = Timeseries(key, x_hat[key], y_hat[key])
-        
+        bmask = template.get_observation_booleans(list(template.keys()))
+
+         #Slice prediction into x_hat and y_hat 
+         #Create Timeseries objects which are fed to a new Replicate object pred
+        pred = Replicate(template.iid)
+        for dependent_key, template_ts in template.items():
+            independent_key = template_ts.independent_key
+            mask = bmask[dependent_key]
+            x_hat = template_ts.x
+            y_hat = y_hat_all[independent_key][mask]
+            pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
         return pred
     
     def predict_dataset(self, template:Dataset, par_map:ParameterMapping, theta_fit):
