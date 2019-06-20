@@ -96,15 +96,14 @@ class BaseODEModel(object):
             theta_fit:                  array with fitting parameters
         
         Returns:
-            Prediction (Dataset):       prediction result
+            prediction (Dataset):       prediction result
         """
         assert not template is None, 'A template must be provided!'
         
-        Prediction = Dataset()
+        prediction = Dataset()
         theta_dict = par_map.repmap(theta_fit)
         
-        for replicate_key, replicates in template.items():
-            data = replicates
-            Prediction[replicate_key] = self.predict_replicate(theta_dict[replicate_key], data)
-        return Prediction
+        for iid, replicate in template.items():
+            prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
+        return prediction
         
