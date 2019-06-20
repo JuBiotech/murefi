@@ -10,29 +10,33 @@ logger = logging.getLogger(__name__)
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
-    def __init__(self, ykey:str, x, y):
+    def __init__(self, x, y, *, independent_key:str, dependent_key:str):
         """Bundles [x] and [y] into a timeseries.
+
         Args:
-            ykey (str): symbol of the dependent variable (no . characters allowed)
             x (list or ndarray): timepoints
             y (list of ndarray): observations (same length as x)
+            independent_key (str): key of the independent variable (no . characters allowed)
+            dependent_key (str): key of the observed timeseries (no . characters allowed)
         """
-        assert isinstance(ykey, str)
         assert isinstance(x, (list, numpy.ndarray))
         assert isinstance(y, (list, numpy.ndarray))
+        assert isinstance(independent_key, str)
+        assert isinstance(dependent_key, str)
         assert len(x) == len(y), 'x and y must have the same length.'
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
-        self.ykey = ykey
         self.x = numpy.array(x)
-        self.y = numpy.array(y)
+        self.y = numpy.array(y)        
+        self.independent_key = independent_key
+        self.dependent_key = dependent_key
         return super().__init__()
 
     def __len__(self):
         return len(self.x)
 
     def __str__(self):
-        return f'{self.ykey} [:{len(self)}]'
+        return f'{self.dependent_key}[:{len(self)}]'
 
     def __repr__(self):
         return self.__str__()
@@ -56,7 +60,7 @@ class Replicate(collections.OrderedDict):
         if len(self) > 0:
             return numpy.unique(numpy.hstack([
                 ts.x
-                for ykey,ts in self.items()
+                for _, ts in self.items()
             ]))
         else:
             return self.default_x_any
@@ -68,24 +72,25 @@ class Replicate(collections.OrderedDict):
 
     def __setitem__(self, key:str, value:Timeseries):
         assert isinstance(value, Timeseries)
-        assert key == value.ykey, f'The key in the Replicate ({key}) must be equal to the Timeseries.ykey ({value.ykey})'
+        assert key == value.dependent_key, f'The key in the Replicate ({key}) must be equal to the Timeseries.dependent_key ({value.dependent_key})'
         return super().__setitem__(key, value)
     
     def get_observation_booleans(self, keys_y:list) -> dict:
         """Gets the Boolean masks for observations of each y in [keys_y], relative to [x_any] and ts.x
+
         Args:
-            keys_y (list): list of the observed variable names for which indices are desired
+            keys_y (list): list of the timeseries keys for which indices are desired
             x_any (array): array of timepoints that the indices shall be relative to
         Returns:
             dict: maps each ykey in keys_y to x_bmask (boolean mask with same size as x_any)
         """
         x_bmask = {}
         x_any = self.x_any
-        for yi,ykey in enumerate(keys_y):
-            if ykey in self:
-                x_bmask[ykey] = numpy.in1d(x_any, self[ykey].x)
+        for yi, tskey in enumerate(keys_y):
+            if tskey in self:
+                x_bmask[tskey] = numpy.in1d(x_any, self[tskey].x)
             else:
-                x_bmask[ykey] = numpy.repeat(False, len(x_any))
+                x_bmask[tskey] = numpy.repeat(False, len(x_any))
         return x_bmask
     
     @staticmethod
@@ -105,8 +110,14 @@ class Replicate(collections.OrderedDict):
         x = numpy.linspace(tmin, tmax, N)
         rep = Replicate(iid)
         for yk in independent_keys:
-            rep[yk] = Timeseries(yk, x, numpy.empty((N,)))
+            rep[yk] = Timeseries(x, numpy.empty((N,)), independent_key=yk, dependent_key=yk)
         return rep
+        
+    def __str__(self):
+        return f'Replicate({", ".join(map(str, self.values()))})'
+
+    def __repr__(self):
+        return self.__str__()
     
     
 class Dataset(collections.OrderedDict):
@@ -206,6 +217,7 @@ class ParameterMapping(object):
             for key in mapping.index
         }
         return
+
 
     def repmap(self, theta_full):
         """Remaps a full parameter vector to a dictionary of replicate-wise parameter vectors.
