@@ -5,10 +5,31 @@ import pandas
 import pathlib
 import scipy.stats as stats
 
+import calibr8
 import murefi
 
 
 dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
+
+
+def _mini_model():
+    class MiniModel(murefi.BaseODEModel):
+        def dydt(self, y, t, theta):
+            A, B, C = y
+            alpha, beta = theta
+            dCdt = alpha*A + beta*B**2
+            dAdt = -dCdt
+            dBdt = -2*dCdt
+            return [dAdt, dBdt, dCdt]
+    return MiniModel(independent_keys=['A', 'B', 'C'])
+
+
+def _mini_error_model(independent:str, dependent:str):
+    class EM(calibr8.ErrorModel):
+        def loglikelihood(self, *, y_obs,  y_hat, theta=None):
+            # assume Normal with sd=1
+            return numpy.sum(stats.norm.logpdf(y_obs-y_hat))
+    return EM(independent_key=independent, dependent_key=dependent)
 
 
 class ParameterMapTest(unittest.TestCase):
@@ -149,20 +170,8 @@ class TestReplicate(unittest.TestCase):
 
 
 class TestBaseODEModel(unittest.TestCase):
-    @staticmethod
-    def _mini_model():
-        class MiniModel(murefi.BaseODEModel):
-            def dydt(self, y, t, theta):
-                A, B, C = y
-                alpha, beta = theta
-                dCdt = alpha*A + beta*B**2
-                dAdt = -dCdt
-                dBdt = -2*dCdt
-                return [dAdt, dBdt, dCdt]
-        return MiniModel(independent_keys=['A', 'B', 'C'])
-
     def test_attributes(self):
-        model = TestBaseODEModel._mini_model()
+        model = _mini_model()
 
         self.assertIsInstance(model, murefi.BaseODEModel)
         self.assertEqual(model.n_y, 3)
@@ -173,7 +182,7 @@ class TestBaseODEModel(unittest.TestCase):
         theta = [0.23, 0.85]
         y0 = [2., 2., 0.]
         x = numpy.linspace(0, 1, 5)
-        model = TestBaseODEModel._mini_model()      
+        model = _mini_model()      
 
         y_hat = model.solver(y0, x, theta)
         self.assertIsInstance(y_hat, dict)
@@ -189,7 +198,7 @@ class TestBaseODEModel(unittest.TestCase):
         theta = [0.23, 0.85]
         y0 = [2., 2., 0.]
         x = numpy.linspace(0, 1, 5)[1:]
-        model = TestBaseODEModel._mini_model()      
+        model = _mini_model()      
 
         y_hat = model.solver(y0, x, theta)
         self.assertTrue(numpy.allclose(y_hat['A'], [1.4819299, 1.28322046, 1.16995677, 1.09060199]))
@@ -201,7 +210,7 @@ class TestBaseODEModel(unittest.TestCase):
         theta = [0.23, 0.85]
         y0 = [2., 2., 0.]
         x = numpy.linspace(0, 1, 5)
-        model = TestBaseODEModel._mini_model()
+        model = _mini_model()
         
         template = murefi.Replicate('TestRep')
         # one observation of A, two observations of C
@@ -223,11 +232,11 @@ class TestBaseODEModel(unittest.TestCase):
         return
 
     def test_predict_dataset(self):
-        model = TestBaseODEModel._mini_model()
+        model = _mini_model()
 
         # create a template dataset
         dataset = murefi.Dataset()
-        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', iid='R1')
+        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', N=60, iid='R1')
         dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, iid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
@@ -253,6 +262,43 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertFalse('A' in prediction['R2'])
         self.assertTrue('B' in prediction['R2'])
         self.assertTrue('C' in prediction['R2'])
+        self.assertEqual(len(prediction['R1'].x_any), 60)
+        self.assertEqual(len(prediction['R2'].x_any), 20)
+        return
+
+
+class TestObjectives(unittest.TestCase):
+    def test_for_dataset(self):
+        model = _mini_model()
+
+        # create a template dataset (uses numpy.empty to create y-values!)
+        dataset = murefi.Dataset()
+        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', iid='R1')
+        dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, iid='R2')
+        # set all y-values to 0.5 to avoid NaNs in the loglikelihood
+        for _, rep in dataset.items():
+            for _, ts in rep.items():
+                ts.y = numpy.repeat(0.5, len(ts))
+
+        # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
+        mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+        mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
+        mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
+        mapping = mapping.reset_index()
+        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        self.assertEqual(pm.ndim, 6)
+
+        obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
+            _mini_error_model('A', 'A'),
+            _mini_error_model('B', 'B'),
+            _mini_error_model('C', 'C'),
+        ])
+        
+        self.assertTrue(callable(obj))
+        theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
+        L = obj(theta)
+        self.assertIsInstance(L, float)
+        self.assertNotEqual(L, float('nan'))
         return
 
 
