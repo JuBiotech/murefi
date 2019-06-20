@@ -36,7 +36,7 @@ class Timeseries(collections.Sized):
         return len(self.x)
 
     def __str__(self):
-        return f'{self.dependent_key} [:{len(self)}]'
+        return f'{self.dependent_key}[:{len(self)}]'
 
     def __repr__(self):
         return self.__str__()
@@ -112,6 +112,12 @@ class Replicate(collections.OrderedDict):
         for yk in independent_keys:
             rep[yk] = Timeseries(x, numpy.empty((N,)), independent_key=yk, dependent_key=yk)
         return rep
+        
+    def __str__(self):
+        return f'Replicate({", ".join(map(str, self.values()))})'
+
+    def __repr__(self):
+        return self.__str__()
     
     
 class Dataset(collections.OrderedDict):
