@@ -6,7 +6,7 @@ test-murefi:
   stage: test
   image: python:3.6
   script:
-    - git clone http://gitlab+deploy-token-77433:CALIBR8_READ$CALIBR8_READ@gitlab.com/diginbio-fzj/calibr8.git
+    - git clone http://gitlab+deploy-token-77433:CALIBR8_READ@gitlab.com/diginbio-fzj/calibr8.git
     - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
     - cd murefi
     - python setup.py bdist_wheel && pip install dist/*.whl
@@ -16,7 +16,7 @@ coverage-murefi:
   stage: test
   image: python:3.6
   script:
-    - git clone http://gitlab+deploy-token-77433:CALIBR8_READ$CALIBR8_READ@gitlab.com/diginbio-fzj/calibr8.git
+    - git clone http://gitlab+deploy-token-77433:CALIBR8_READ@gitlab.com/diginbio-fzj/calibr8.git
     - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
     - cd murefi && python setup.py develop
     - pip install coverage
@@ -26,7 +26,7 @@ release-murefi:
   stage: release
   image: python:3.6
   script:
-    - git clone http://gitlab+deploy-token-77433:CALIBR8_READ$CALIBR8_READ@gitlab.com/diginbio-fzj/calibr8.git
+    - git clone http://gitlab+deploy-token-77433:CALIBR8_READ@gitlab.com/diginbio-fzj/calibr8.git
     - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
     - cd murefi && python setup.py bdist_wheel && cp dist/*.whl ..
   artifacts:
