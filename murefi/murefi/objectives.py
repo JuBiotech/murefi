@@ -24,7 +24,7 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
         ]
         for iid, rep_obs in dataset.items()
     }
-        
+    
     def negative_loglikelihood_dataset(theta_fit):
         L = 0
         prediction = model_template.predict_dataset(dataset, par_map, theta_fit)

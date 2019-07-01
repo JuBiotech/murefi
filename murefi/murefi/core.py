@@ -20,6 +20,7 @@ class Timeseries(collections.Sized):
             dependent_key (str): key of the observed timeseries (no . characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
+        # TODO: accept TensorVariables for y
         assert isinstance(y, (list, numpy.ndarray))
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
@@ -228,10 +229,12 @@ class ParameterMapping(object):
         Returns:
             theta_dict (dict): dictionary of replicate-wise parameter vectors
         """
+        # TODO: support TensorVariables for theta_full
         pname_to_pvalue = {
             pname : pvalue
             for pname, pvalue in zip(self.parameters, theta_full)
         }
+        # TODO: use tuple instead of array to support symbolic thetas
         theta_dict = {
             rkey : numpy.array([
                 pname_to_pvalue[pname] if isinstance(pname, str) else pname

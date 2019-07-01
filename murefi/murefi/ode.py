@@ -59,6 +59,7 @@ class BaseODEModel(object):
         Args:
             parameters (array): concatenation of y0 and theta parameters
             template (Replicate): template that the prediction will be comparable with
+
         Returns:
             pred (Replicate): prediction result
         """
@@ -83,6 +84,22 @@ class BaseODEModel(object):
             y_hat = y_hat_all[independent_key][mask]
             pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
         return pred
+
+    def symbolic_predict_replicate(self, parameters, template:Replicate):
+        """Symbolically predict a replicate
+
+        Args:
+            parameters (tt.TensorVariable): 1D Tensor of y0 and theta parameters
+            template (Replicate): template that the prediction will be comparable with
+
+        Returns:
+            prediction (Replicate): symbolic predicted template (contains Timeseries with symbolic y-Tensors)
+        """
+
+        # TODO: merge this method with the non-symbolic predict_replicate
+
+
+        return
     
     def predict_dataset(self, template:Dataset, par_map:ParameterMapping, theta_fit):
         """Simulates an experiment that is comparable to the Dataset template.
