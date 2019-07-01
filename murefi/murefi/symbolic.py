@@ -70,7 +70,7 @@ def make_hashable(obj):
     return obj
 
 
-class IntegrationOp(theano.Op):
+class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
     """This is a theano Op that becomes a node in the computation graph.
     It is not differentiable, because it uses a 'solver' function that is provided by the user.
     """
