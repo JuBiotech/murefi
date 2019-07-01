@@ -75,7 +75,7 @@ class Timeseries(collections.Sized):
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
         self.x = numpy.array(x)
-        self.y = numpy.array(y)        
+        self.y = numpy.array(y) if not HAVE_PYMC3 or not isinstance(y, theano.tensor.TensorVariable) else y   
         self.independent_key = independent_key
         self.dependent_key = dependent_key
         return super().__init__()
