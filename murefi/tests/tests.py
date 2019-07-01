@@ -3,6 +3,7 @@ import unittest
 import numpy
 import pandas
 import pathlib
+import scipy.integrate
 import scipy.stats as stats
 
 import calibr8
@@ -367,6 +368,83 @@ class TestSymbolicComputation(unittest.TestCase):
                     self.assertTrue(exp, act)
                 else:
                     assert isinstance(act, tt.TensorVariable)
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_symbolic_predict_replicate(self):
+        inputs = [
+            tt.scalar('beta', dtype=theano.config.floatX),
+            tt.scalar('A', dtype=theano.config.floatX)
+        ]
+        theta = [0.23, inputs[0]]
+        y0 = [inputs[1], 2., 0.]
+        x = numpy.linspace(0, 1, 5)
+        model = _mini_model()
+        
+        template = murefi.Replicate('TestRep')
+        # one observation of A, two observations of C
+        template['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+        template['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
+
+        # construct the symbolic computation graph
+        prediction = model.symbolic_predict_replicate(y0 + theta, template)
+
+        self.assertIsInstance(prediction, murefi.Replicate)
+        self.assertEqual(prediction.iid, 'TestRep')
+        self.assertIn('A', prediction)
+        self.assertFalse('B' in prediction)
+        self.assertIn('C1', prediction)
+        self.assertIn('C2', prediction)
+        
+        self.assertIsInstance(prediction['A'].y, theano.tensor.TensorVariable)
+        self.assertIsInstance(prediction['C1'].y, theano.tensor.TensorVariable)
+        self.assertIsInstance(prediction['C2'].y, theano.tensor.TensorVariable)
+
+        outputs = [
+            prediction['A'].y,
+            prediction['C1'].y,
+            prediction['C2'].y
+        ]
+
+        # compile a theano function for performing the computation
+        f = theano.function(inputs, outputs)
+
+        # compute the model outcome
+        actual = f(0.85, 2.0)
+
+        self.assertTrue(numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046]))
+        self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
+        self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_integration_op(self):
+        model = _mini_model()
+
+        inputs = [
+            tt.scalar('beta', dtype=theano.config.floatX),
+            tt.scalar('A', dtype=theano.config.floatX)
+        ]
+        theta = [0.23, inputs[0]]
+        y0 = [inputs[1], 2., 0.]
+        x = numpy.linspace(0, 1, 5)
+
+        op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
+        outputs = op(y0, x, theta)
+
+        self.assertIsInstance(outputs, theano.tensor.TensorVariable)
+
+        # compile a theano function for performing the computation
+        f = theano.function(inputs, outputs)
+
+        # compute the model outcome
+        actual = f(0.83, 2.0)
+        expected = model.solver([2., 2., 0.], x, [0.23, 0.83])
+        
+        self.assertTrue(numpy.allclose(actual[0], expected['A']))
+        self.assertTrue(numpy.allclose(actual[1], expected['B']))
+        self.assertTrue(numpy.allclose(actual[2], expected['C']))        
         return
 
 

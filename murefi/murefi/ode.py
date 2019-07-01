@@ -2,6 +2,7 @@ import abc
 import numpy
 import scipy.integrate
 from . core import Replicate, Timeseries, Dataset, ParameterMapping
+from . import symbolic
 
 
 class BaseODEModel(object):
@@ -56,6 +57,7 @@ class BaseODEModel(object):
     
     def predict_replicate(self, parameters, template:Replicate) -> Replicate:
         """Simulates an experiment that is comparable to the Replicate template.
+
         Args:
             parameters (array): concatenation of y0 and theta parameters
             template (Replicate): template that the prediction will be comparable with
@@ -70,12 +72,12 @@ class BaseODEModel(object):
         x = template.x_any
         y_hat_all = self.solver(y0, x, theta)
 
-        #Get only those y_hat values for which data exist
-        #All keys in bmask corresponds to available data for observables
+        # Get only those y_hat values for which data exist
+        # All keys in bmask corresponds to available data for observables
         bmask = template.get_observation_booleans(list(template.keys()))
 
-         #Slice prediction into x_hat and y_hat 
-         #Create Timeseries objects which are fed to a new Replicate object pred
+        # Slice prediction into x_hat and y_hat 
+        # Create Timeseries objects which are fed to a new Replicate object pred
         pred = Replicate(template.iid)
         for dependent_key, template_ts in template.items():
             independent_key = template_ts.independent_key
@@ -86,7 +88,7 @@ class BaseODEModel(object):
         return pred
 
     def symbolic_predict_replicate(self, parameters, template:Replicate):
-        """Symbolically predict a replicate
+        """Symbolically predict a replicate.
 
         Args:
             parameters (tt.TensorVariable): 1D Tensor of y0 and theta parameters
@@ -95,11 +97,34 @@ class BaseODEModel(object):
         Returns:
             prediction (Replicate): symbolic predicted template (contains Timeseries with symbolic y-Tensors)
         """
-
         # TODO: merge this method with the non-symbolic predict_replicate
 
+        assert not template is None, 'A template must be provided!'
+        
+        y0 = parameters[:self.n_y]
+        theta = parameters[self.n_y:]
+        x = template.x_any
 
-        return
+        # symbolically predict for all timepoints
+        y_hat_all = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, x, theta)
+        y_hat_all = {
+            ikey : y_hat_all[i]
+            for i, ikey in enumerate(self.independent_keys)
+        }
+        
+        # mask the prediction
+        imask = template.get_observation_indices(list(template.keys()))
+        
+        # Slice prediction into x_hat and y_hat 
+        # Create Timeseries objects which are fed to a new Replicate object pred
+        pred = Replicate(template.iid)
+        for dependent_key, template_ts in template.items():
+            independent_key = template_ts.independent_key
+            mask = imask[dependent_key]
+            x_hat = template_ts.x
+            y_hat = y_hat_all[independent_key][mask]
+            pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
+        return pred
     
     def predict_dataset(self, template:Dataset, par_map:ParameterMapping, theta_fit):
         """Simulates an experiment that is comparable to the Dataset template.
