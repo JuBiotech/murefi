@@ -140,6 +140,23 @@ class Replicate(collections.OrderedDict):
             else:
                 x_bmask[tskey] = numpy.repeat(False, len(x_any))
         return x_bmask
+
+    def get_observation_indices(self, keys_y:list) -> dict:
+        """Gets the index masks for observations of each y in [keys_y], relative to [x_any] and ts.x
+
+        Args:
+            keys_y (list): list of the timeseries keys for which indices are desired
+            x_any (array): array of timepoints that the indices shall be relative to
+
+        Returns:
+            dict: maps each ykey in keys_y to x_imask (array of indices in x_any)
+        """
+        bmask = self.get_observation_booleans(keys_y)
+        imask = {
+            yk : numpy.arange(len(mask), dtype=int)[mask]
+            for yk, mask in bmask.items()
+        }
+        return imask
     
     @staticmethod
     def make_template(tmin:float, tmax:float, independent_keys:list, iid:str=None, N:int=100):

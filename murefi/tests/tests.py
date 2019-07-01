@@ -167,6 +167,16 @@ class TestReplicate(unittest.TestCase):
         self.assertTrue(numpy.array_equal(result['P_observed'], [False,False,False,False,False,False,False,False]))
         return
 
+    def test_observation_indices(self):
+        rep = murefi.Replicate('A01')
+        rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
+        rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
+        result = rep.get_observation_indices(['S_observed', 'X_observed', 'P_observed'])
+        self.assertTrue(numpy.array_equal(result['S_observed'], [0,1,2,4,6]))
+        self.assertTrue(numpy.array_equal(result['X_observed'], [1,2,3,5,6,7]))
+        self.assertTrue(numpy.array_equal(result['P_observed'], []))
+        return
+
     def test_make_template(self):
         template = murefi.Replicate.make_template(0.5, 3.5, independent_keys=['A', 'B', 'C'], N=20)
         self.assertIn('A', template)
