@@ -5,6 +5,50 @@ import numpy
 import pandas
 import scipy.stats
 
+HAVE_PYMC3 = False
+
+try:
+    import pymc3
+    HAVE_PYMC3 = True
+except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
+    class _ImportWarnerPyMC3:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
+            )
+
+    class _PyMC3:
+        def __getattr__(self, attr):
+            return _ImportWarnerPyMC3(attr)
+    
+    pm = _PyMC3()
+
+try:
+    import theano
+except ModuleNotFoundError:  # theano is optional, throw exception when used
+
+    class _ImportWarnerTheano:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "Theano is not installed. In order to use this function:\npip install theano"
+            )
+
+    class _Theano:
+        def __getattr__(self, attr):
+            return _ImportWarnerTheano(attr)
+    
+    theano = _Theano()
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,11 +64,14 @@ class Timeseries(collections.Sized):
             dependent_key (str): key of the observed timeseries (no . characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
-        # TODO: accept TensorVariables for y
-        assert isinstance(y, (list, numpy.ndarray))
+        if HAVE_PYMC3:
+            assert isinstance(y, (list, numpy.ndarray, theano.tensor.TensorVariable))
+        else:
+            assert isinstance(y, (list, numpy.ndarray))
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
-        assert len(x) == len(y), 'x and y must have the same length.'
+        if not HAVE_PYMC3 or not isinstance(y, theano.tensor.TensorVariable):
+            assert len(x) == len(y), 'x and y must have the same length.'
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
         self.x = numpy.array(x)
@@ -229,17 +276,15 @@ class ParameterMapping(object):
         Returns:
             theta_dict (dict): dictionary of replicate-wise parameter vectors
         """
-        # TODO: support TensorVariables for theta_full
         pname_to_pvalue = {
-            pname : pvalue
-            for pname, pvalue in zip(self.parameters, theta_full)
+            pname : theta_full[p]
+            for p, pname in enumerate(self.parameters)
         }
-        # TODO: use tuple instead of array to support symbolic thetas
         theta_dict = {
-            rkey : numpy.array([
+            rkey : tuple([
                 pname_to_pvalue[pname] if isinstance(pname, str) else pname
                 for pname in pnames
-            ], dtype=float)
+            ])
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict

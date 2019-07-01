@@ -9,6 +9,15 @@ import calibr8
 import murefi
 
 
+try:
+    import pymc3
+    import theano
+    import theano.tensor as tt
+    HAVE_PYMC3 = True
+except ModuleNotFoundError:
+    HAVE_PYMC3 = False
+
+
 dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
 
 
@@ -122,7 +131,7 @@ class ParameterMapTest(unittest.TestCase):
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])
-            }
+        }
         self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
         for key in expected.keys():
             self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
@@ -299,6 +308,55 @@ class TestObjectives(unittest.TestCase):
         L = obj(theta)
         self.assertIsInstance(L, float)
         self.assertNotEqual(L, float('nan'))
+        return
+
+
+class TestSymbolicComputation(unittest.TestCase):
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_timeseries_support(self):
+        x = numpy.linspace(0, 10, 10)
+        y = tt.scalar('TestY', dtype=theano.config.floatX)
+        assert isinstance(y, tt.TensorVariable)
+        ts = murefi.Timeseries(x, y, independent_key='Test', dependent_key='Test')
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_symbolic_parameter_mapping(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=dict(
+                S_0=(1,2),
+                X_0=(3,4),
+                mue_max=(5,6),
+                K_S=(7,8),
+                t_lag=(9,10),
+                t_acc=(11,12)
+            ), guesses=dict(
+                S_0=0.1,
+                X_0=0.2,
+                mue_max=0.3,
+                K_S=0.4,
+                t_lag=0.5,
+                t_acc=0.6
+            )
+        )
+
+        # create a theta that is a mix of constant and symbolic variables
+        theta_fitted = [1, tt.scalar('mu_max', dtype=theano.config.floatX), 13, tt.scalar('t_acc', dtype=theano.config.floatX)]
+
+        # map it to the two replicates
+        expected = {
+            'A01': numpy.array([1.0, None, 3.0, 4.0, 5.0, 6.0, 7.0]),
+            'B02': numpy.array([11.0, None, 13.0, None, 15.0, 16.0, 17.0])
+        }
+        mapped = parmap.repmap(theta_fitted)
+        self.assertEqual(mapped.keys(), expected.keys())
+        for rid in expected.keys():
+            for exp, act in zip(expected[rid], mapped[rid]):
+                if exp is not None:
+                    self.assertTrue(exp, act)
+                else:
+                    assert isinstance(act, tt.TensorVariable)
         return
 
 
