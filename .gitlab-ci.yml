@@ -35,6 +35,7 @@ release-murefi:
     expire_in: 30 yrs
   only:
     # only run on refs that are named like murefi_v1.2 or murefi_v1.2.3
-    - /^murefi_v(\d+\.)?(\d+\.)?(\*|\d+)$/
+    - /^v(\d+\.)?(\d+\.)?(\*|\d+)$/
+
   except:
     - branches
