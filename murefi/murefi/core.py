@@ -8,7 +8,7 @@ import scipy.stats
 HAVE_PYMC3 = False
 
 try:
-    import pymc3
+    import pymc3 as pm
     HAVE_PYMC3 = True
 except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
     class _ImportWarnerPyMC3:
@@ -305,4 +305,3 @@ class ParameterMapping(object):
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict
-

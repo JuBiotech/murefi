@@ -4,6 +4,26 @@ import scipy.integrate
 from . core import Replicate, Timeseries, Dataset, ParameterMapping
 from . import symbolic
 
+try:
+    import pymc3 as pm
+
+except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
+    class _ImportWarnerPyMC3:
+        __all__ = []
+
+        def __init__(self, attr):
+            self.attr = attr
+
+        def __call__(self, *args, **kwargs):
+            raise ImportError(
+                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
+            )
+
+    class _PyMC3:
+        def __getattr__(self, attr):
+            return _ImportWarnerPyMC3(attr)
+    
+    pm = _PyMC3()
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
@@ -145,7 +165,17 @@ class BaseODEModel(object):
         prediction = Dataset()
         theta_dict = par_map.repmap(theta_fit)
         
-        for iid, replicate in template.items():
-            prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
-        return prediction
-        
+        for element in theta_fit:
+            if isinstance(element, pm.model.TransformedRV):
+                for iid, replicate in template.items():
+                    prediction[iid] = self.symbolic_predict_replicate(theta_dict[iid], replicate)
+                return prediction
+            
+            elif isinstance(element, (int, float, str)):
+                for iid, replicate in template.items():
+                    prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
+                return prediction
+            
+            else:
+                raise Exception('Theta_fit contains unsupported data type')
+                
