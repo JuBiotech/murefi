@@ -4,8 +4,11 @@ import scipy.integrate
 from . core import Replicate, Timeseries, Dataset, ParameterMapping
 from . import symbolic
 
+HAVE_PYMC3 = False
+
 try:
     import pymc3 as pm
+    HAVE_PYMC3 = True
 
 except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
     class _ImportWarnerPyMC3:
@@ -165,17 +168,28 @@ class BaseODEModel(object):
         prediction = Dataset()
         theta_dict = par_map.repmap(theta_fit)
         
-        for element in theta_fit:
-            if isinstance(element, pm.model.TransformedRV):
-                for iid, replicate in template.items():
-                    prediction[iid] = self.symbolic_predict_replicate(theta_dict[iid], replicate)
-                return prediction
-            
-            elif isinstance(element, (int, float, str)):
-                for iid, replicate in template.items():
-                    prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
-                return prediction
-            
-            else:
-                raise Exception('Theta_fit contains unsupported data type')
+        if HAVE_PYMC3:
+            for element in theta_fit:
+                if isinstance(element, pm.model.TransformedRV):
+                    for iid, replicate in template.items():
+                        prediction[iid] = self.symbolic_predict_replicate(theta_dict[iid], replicate)
+                    return prediction
                 
+                elif isinstance(element, (int, float, str)):
+                    for iid, replicate in template.items():
+                        prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
+                    return prediction
+                
+                else:
+                    raise Exception('Theta_fit contains unsupported data type')
+        
+        else:
+            for element in theta_fit:
+                if isinstance(element, (int, float, str)):
+                    for iid, replicate in template.items():
+                        prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
+                    return prediction
+                
+            else:
+                    raise Exception('Theta_fit contains unsupported data type')
+                    
