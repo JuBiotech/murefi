@@ -33,7 +33,7 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
             predicted_replicate = prediction[iid]
             for (em, observed_ts) in em_ts_list:
                 predicted_ts = predicted_replicate[em.dependent_key]
-                L += em.loglikelihood(y_obs=observed_ts.y, y_hat=predicted_ts.y)
+                L += em.loglikelihood(y=observed_ts.y, x=predicted_ts.y)
         
         if numpy.isnan(L):
             return numpy.inf
@@ -66,6 +66,6 @@ def theano_for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: 
         predicted_replicate = prediction[iid]
         for (em, observed_ts) in em_ts_list:
             predicted_ts = predicted_replicate[em.dependent_key]
-            L = em.loglikelihood(y_obs=observed_ts.y, y_hat=predicted_ts.y, replicate_id=iid, dependent_key=em.dependent_key)
+            L = em.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=iid, dependent_key=em.dependent_key)
     return
 
