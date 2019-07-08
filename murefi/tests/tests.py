@@ -36,9 +36,9 @@ def _mini_model():
 
 def _mini_error_model(independent:str, dependent:str):
     class EM(calibr8.ErrorModel):
-        def loglikelihood(self, *, y_obs,  y_hat, theta=None):
+        def loglikelihood(self, *, y,  x, theta=None):
             # assume Normal with sd=1
-            return numpy.sum(stats.norm.logpdf(y_obs-y_hat))
+            return numpy.sum(stats.norm.logpdf(y-x))
     return EM(independent_key=independent, dependent_key=dependent)
 
 
