@@ -10,8 +10,8 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
-        model_template (BaseODEModel): 
-        par_map (ParameterMapping):
+        model_template (BaseODEModel): ODE model
+        par_map (ParameterMapping): murefi.ParameterMapping object
         error_models: list of calibr8.ErrorModel objects
     """
     
@@ -41,14 +41,15 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
     return negative_loglikelihood_dataset
 
 
-def theano_for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: calibr8.ErrorModel, theta_fit):
-    """Creates an objective function for fitting a Dataset
+def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: calibr8.ErrorModel, theta_fit):
+    """Builds the computation graph for infering parameters of a Dataset with MCMC.
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
-        model_template (BaseODEModel): 
-        par_map (ParameterMapping):
+        model_template (BaseODEModel): ODE model
+        par_map (ParameterMapping): murefi.ParameterMapping object
         error_models: list of calibr8.ErrorModel objects
+        theta_fit: symbolic parameter vector
     """
     
     mappings = {
