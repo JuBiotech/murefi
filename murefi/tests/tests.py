@@ -253,6 +253,7 @@ class TestBaseODEModel(unittest.TestCase):
 
     def test_predict_dataset(self):
         model = _mini_model()
+        
 
         # create a template dataset
         dataset = murefi.Dataset()
@@ -286,6 +287,23 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertEqual(len(prediction['R2'].x_any), 20)
         return
 
+
+class TestBaseODEModel(unittest.TestCase):
+    def test_attributes(self):
+        monod = murefi.MonodModel()
+        self.assertIsInstance(monod, murefi.BaseODEModel)
+        self.assertIsInstance(monod, murefi.MonodModel)
+        self.assertEqual(monod.n_y, 2)
+        self.assertSequenceEqual(monod.independent_keys, ['S', 'X'])
+    
+    def test_dydt(self):
+        monod = murefi.MonodModel()
+        y = numpy.array([0.1, 10])
+        t = 0
+        theta = numpy.array([0.5, 0.1, 0.5])
+        true = monod.dydt(y, t, theta)
+        expected = [-0.5, 0.25]
+    
 
 class TestObjectives(unittest.TestCase):
     def test_for_dataset(self):
