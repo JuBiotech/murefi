@@ -78,6 +78,21 @@ class ParameterMapTest(unittest.TestCase):
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
             })
+        parmap = murefi.ParameterMapping(map_df, bounds=None, guesses=None)
+        self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
+        self.assertDictEqual(parmap.parameters, collections.OrderedDict([
+            ('test1A', 'S_0'),
+            ('test1B', 'X_0'),
+            ('test2C', 'mue_max'),
+            ('test2D', 'K_S')
+            ]))
+        self.assertEqual(parmap.ndim, 4)
+        self.assertEqual(parmap.bounds,((None, None), (None, None), (None, None), (None, None)))
+        self.assertEqual(parmap.guesses, (None, None, None, None))
+        self.assertEqual(parmap.mapping, {
+            'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
+            'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
+            })
         return
     
     def test_invalid_init(self):
