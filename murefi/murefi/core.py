@@ -5,6 +5,8 @@ import numpy
 import pandas
 import scipy.stats
 
+import calibr8
+
 HAVE_PYMC3 = False
 
 try:
@@ -70,7 +72,7 @@ class Timeseries(collections.Sized):
             assert isinstance(y, (list, numpy.ndarray))
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
-        if not HAVE_PYMC3 or not isinstance(y, theano.tensor.TensorVariable):
+        if not calibr8.istensor(y):
             assert len(x) == len(y), 'x and y must have the same length.'
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
