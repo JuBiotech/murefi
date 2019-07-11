@@ -22,9 +22,9 @@ coverage-murefi:
     - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
     - cd murefi && python setup.py develop
     - pip install coverage
-    - coverage run --parallel --source=tests/tests.py
+    - coverage run --parallel --source=murefi tests/tests.py
     - pip install pymc3
-    - coverage run --parallel --source=tests/tests.py  && coverage combine && coverage report -m
+    - coverage run --parallel --source=murefi tests/tests.py  && coverage combine && coverage report -m
 
 release-murefi:
   stage: release
