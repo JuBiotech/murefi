@@ -269,7 +269,6 @@ class TestBaseODEModel(unittest.TestCase):
     def test_predict_dataset(self):
         model = _mini_model()
         
-
         # create a template dataset
         dataset = murefi.Dataset()
         dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', N=60, iid='R1')
@@ -430,9 +429,9 @@ class TestSymbolicComputation(unittest.TestCase):
         self.assertIn('C1', prediction)
         self.assertIn('C2', prediction)
         
-        self.assertIsInstance(prediction['A'].y, theano.tensor.TensorVariable)
-        self.assertIsInstance(prediction['C1'].y, theano.tensor.TensorVariable)
-        self.assertIsInstance(prediction['C2'].y, theano.tensor.TensorVariable)
+        self.assertIsInstance(prediction['A'].y, tt.TensorVariable)
+        self.assertIsInstance(prediction['C1'].y, tt.TensorVariable)
+        self.assertIsInstance(prediction['C2'].y, tt.TensorVariable)
 
         outputs = [
             prediction['A'].y,
@@ -451,6 +450,7 @@ class TestSymbolicComputation(unittest.TestCase):
         self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
         return
     
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_symbolic_predict_dataset(self):
         inputs = [
             tt.scalar('beta', dtype=theano.config.floatX),
@@ -488,9 +488,9 @@ class TestSymbolicComputation(unittest.TestCase):
         self.assertIn('C1', prediction['TestRep'])
         self.assertIn('C2', prediction['TestRep'])
         
-        self.assertIsInstance(prediction['TestRep']['A'].y, theano.tensor.TensorVariable)
-        self.assertIsInstance(prediction['TestRep']['C1'].y, theano.tensor.TensorVariable)
-        self.assertIsInstance(prediction['TestRep']['C2'].y, theano.tensor.TensorVariable)
+        self.assertIsInstance(prediction['TestRep']['A'].y, tt.TensorVariable)
+        self.assertIsInstance(prediction['TestRep']['C1'].y, tt.TensorVariable)
+        self.assertIsInstance(prediction['TestRep']['C2'].y, tt.TensorVariable)
 
         outputs = [
             prediction['TestRep']['A'].y,
@@ -524,7 +524,7 @@ class TestSymbolicComputation(unittest.TestCase):
         op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
         outputs = op(y0, x, theta)
 
-        self.assertIsInstance(outputs, theano.tensor.TensorVariable)
+        self.assertIsInstance(outputs, tt.TensorVariable)
 
         # compile a theano function for performing the computation
         f = theano.function(inputs, outputs)
