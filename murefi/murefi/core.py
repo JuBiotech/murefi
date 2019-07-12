@@ -7,49 +7,6 @@ import scipy.stats
 
 import calibr8
 
-HAVE_PYMC3 = False
-
-try:
-    import pymc3 as pm
-    HAVE_PYMC3 = True
-except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
-    class _ImportWarnerPyMC3:
-        __all__ = []
-
-        def __init__(self, attr):
-            self.attr = attr
-
-        def __call__(self, *args, **kwargs):
-            raise ImportError(
-                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
-            )
-
-    class _PyMC3:
-        def __getattr__(self, attr):
-            return _ImportWarnerPyMC3(attr)
-    
-    pm = _PyMC3()
-
-try:
-    import theano
-except ModuleNotFoundError:  # theano is optional, throw exception when used
-
-    class _ImportWarnerTheano:
-        __all__ = []
-
-        def __init__(self, attr):
-            self.attr = attr
-
-        def __call__(self, *args, **kwargs):
-            raise ImportError(
-                "Theano is not installed. In order to use this function:\npip install theano"
-            )
-
-    class _Theano:
-        def __getattr__(self, attr):
-            return _ImportWarnerTheano(attr)
-    
-    theano = _Theano()
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +23,7 @@ class Timeseries(collections.Sized):
             dependent_key (str): key of the observed timeseries (no . characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
-        if HAVE_PYMC3:
-            assert isinstance(y, (list, numpy.ndarray, theano.tensor.TensorVariable))
-        else:
-            assert isinstance(y, (list, numpy.ndarray))
+        assert (isinstance(y, (list, numpy.ndarray)) or calibr8.istensor(y))
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
         if not calibr8.istensor(y):
@@ -77,7 +31,7 @@ class Timeseries(collections.Sized):
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
         self.x = numpy.array(x)
-        self.y = numpy.array(y) if not HAVE_PYMC3 or not isinstance(y, theano.tensor.TensorVariable) else y   
+        self.y = numpy.array(y)  if not calibr8.istensor(y) else y   
         self.independent_key = independent_key
         self.dependent_key = dependent_key
         return super().__init__()
