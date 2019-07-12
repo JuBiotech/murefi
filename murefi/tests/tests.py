@@ -450,6 +450,64 @@ class TestSymbolicComputation(unittest.TestCase):
         self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
         self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
         return
+    
+    def test_symbolic_predict_dataset(self):
+        inputs = [
+            tt.scalar('beta', dtype=theano.config.floatX),
+            tt.scalar('A', dtype=theano.config.floatX)
+        ]
+        theta = [0.23, inputs[0]]
+        y0 = [inputs[1], 2., 0.]
+        x = numpy.linspace(0, 1, 5)
+        model = _mini_model()
+        
+        # create a parameter mapping
+        mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+        mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
+        mapping = mapping.reset_index()
+        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        self.assertEqual(pm.ndim, 5)
+        self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+
+        # create a dataset
+        ds_template = murefi.Dataset()
+
+        # One replicate with one observation of A, two observations of C
+        template = murefi.Replicate('TestRep')
+        template['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+        template['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
+        ds_template['TestRep'] = template
+
+        # construct the symbolic computation graph
+        prediction = model.predict_dataset(ds_template, pm, theta_fit = y0 + theta)
+
+        self.assertIsInstance(prediction, murefi.Dataset)
+        self.assertIn('A', prediction['TestRep'])
+        self.assertFalse('B' in prediction['TestRep'])
+        self.assertIn('C1', prediction['TestRep'])
+        self.assertIn('C2', prediction['TestRep'])
+        
+        self.assertIsInstance(prediction['TestRep']['A'].y, theano.tensor.TensorVariable)
+        self.assertIsInstance(prediction['TestRep']['C1'].y, theano.tensor.TensorVariable)
+        self.assertIsInstance(prediction['TestRep']['C2'].y, theano.tensor.TensorVariable)
+
+        outputs = [
+            prediction['TestRep']['A'].y,
+            prediction['TestRep']['C1'].y,
+            prediction['TestRep']['C2'].y
+        ]
+
+        # compile a theano function for performing the computation
+        f = theano.function(inputs, outputs)
+
+        # compute the model outcome
+        actual = f(0.85, 2.0)
+
+        self.assertTrue(numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046]))
+        self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
+        self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
+        return
 
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_integration_op(self):
