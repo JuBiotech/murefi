@@ -420,7 +420,7 @@ class TestSymbolicComputation(unittest.TestCase):
         template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
 
         # construct the symbolic computation graph
-        prediction = model.symbolic_predict_replicate(y0 + theta, template)
+        prediction = model.predict_replicate(y0 + theta, template)
 
         self.assertIsInstance(prediction, murefi.Replicate)
         self.assertEqual(prediction.iid, 'TestRep')

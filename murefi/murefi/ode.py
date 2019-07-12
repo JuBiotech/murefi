@@ -58,76 +58,50 @@ class BaseODEModel(object):
         return y_hat_dict
     
     def predict_replicate(self, parameters, template:Replicate) -> Replicate:
-        """Simulates an experiment that is comparable to the Replicate template.
+        """Simulates an experiment that is comparable to the Replicate template with support for symbolically prediction.
 
         Args:
-            parameters (array): concatenation of y0 and theta parameters
+            parameters (array or tt.TensorVariable ): concatenation of y0 and theta parameters or 1D Tensor of the same
             template (Replicate): template that the prediction will be comparable with
 
         Returns:
-            pred (Replicate): prediction result
+            pred (Replicate): prediction result or symbolic predicted template (contains Timeseries with symbolic y-Tensors)
         """
         assert not template is None, 'A template must be provided!'
         
         y0 = parameters[:self.n_y]
         theta = parameters[self.n_y:]
         x = template.x_any
-        y_hat_all = self.solver(y0, x, theta)
 
-        # Get only those y_hat values for which data exist
-        # All keys in bmask corresponds to available data for observables
-        bmask = template.get_observation_booleans(list(template.keys()))
+        if not calibr8.istensor([y0, theta]):
+            y_hat_all = self.solver(y0, x, theta)
+
+            # Get only those y_hat values for which data exist
+            # All keys in masks corresponds to available data for observables
+            masks = template.get_observation_booleans(list(template.keys()))
+        
+        else:
+            # symbolically predict for all timepoints
+            y_hat_all = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, x, theta)
+            y_hat_all = {
+                ikey : y_hat_all[i]
+                for i, ikey in enumerate(self.independent_keys)
+            }
+        
+            # mask the prediction
+            masks = template.get_observation_indices(list(template.keys()))
 
         # Slice prediction into x_hat and y_hat 
         # Create Timeseries objects which are fed to a new Replicate object pred
         pred = Replicate(template.iid)
         for dependent_key, template_ts in template.items():
             independent_key = template_ts.independent_key
-            mask = bmask[dependent_key]
+            mask = masks[dependent_key]
             x_hat = template_ts.x
             y_hat = y_hat_all[independent_key][mask]
             pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
         return pred
-
-    def symbolic_predict_replicate(self, parameters, template:Replicate):
-        """Symbolically predict a replicate.
-
-        Args:
-            parameters (tt.TensorVariable): 1D Tensor of y0 and theta parameters
-            template (Replicate): template that the prediction will be comparable with
-
-        Returns:
-            prediction (Replicate): symbolic predicted template (contains Timeseries with symbolic y-Tensors)
-        """
-        # TODO: merge this method with the non-symbolic predict_replicate
-
-        assert not template is None, 'A template must be provided!'
         
-        y0 = parameters[:self.n_y]
-        theta = parameters[self.n_y:]
-        x = template.x_any
-
-        # symbolically predict for all timepoints
-        y_hat_all = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, x, theta)
-        y_hat_all = {
-            ikey : y_hat_all[i]
-            for i, ikey in enumerate(self.independent_keys)
-        }
-        
-        # mask the prediction
-        imask = template.get_observation_indices(list(template.keys()))
-        
-        # Slice prediction into x_hat and y_hat 
-        # Create Timeseries objects which are fed to a new Replicate object pred
-        pred = Replicate(template.iid)
-        for dependent_key, template_ts in template.items():
-            independent_key = template_ts.independent_key
-            mask = imask[dependent_key]
-            x_hat = template_ts.x
-            y_hat = y_hat_all[independent_key][mask]
-            pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
-        return pred
-    
     def predict_dataset(self, template:Dataset, par_map:ParameterMapping, theta_fit):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
@@ -146,14 +120,7 @@ class BaseODEModel(object):
         
         prediction = Dataset()
         theta_dict = par_map.repmap(theta_fit)
-        
-        if calibr8.istensor(theta_fit):
-            for iid, replicate in template.items():
-                prediction[iid] = self.symbolic_predict_replicate(theta_dict[iid], replicate)
-            return prediction
-                
-        else:
-            for iid, replicate in template.items():
-                prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
-            return prediction
-        
+
+        for iid, replicate in template.items():
+            prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
+        return prediction
