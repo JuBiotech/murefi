@@ -375,7 +375,8 @@ class TestSymbolicComputation(unittest.TestCase):
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_timeseries_support(self):
         x = numpy.linspace(0, 10, 10)
-        y = tt.scalar('TestY', dtype=theano.config.floatX)
+        with theano.configparser.change_flags(compute_test_value='off'):
+                y = tt.scalar('TestY', dtype=theano.config.floatX)
         assert isinstance(y, tt.TensorVariable)
         ts = murefi.Timeseries(x, y, independent_key='Test', dependent_key='Test')
         return
@@ -402,7 +403,8 @@ class TestSymbolicComputation(unittest.TestCase):
         )
 
         # create a theta that is a mix of constant and symbolic variables
-        theta_fitted = [1, tt.scalar('mu_max', dtype=theano.config.floatX), 13, tt.scalar('t_acc', dtype=theano.config.floatX)]
+        with theano.configparser.change_flags(compute_test_value='off'):
+            theta_fitted = [1, tt.scalar('mu_max', dtype=theano.config.floatX), 13, tt.scalar('t_acc', dtype=theano.config.floatX)]
 
         # map it to the two replicates
         expected = {
@@ -421,10 +423,11 @@ class TestSymbolicComputation(unittest.TestCase):
 
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_symbolic_predict_replicate(self):
-        inputs = [
-            tt.scalar('beta', dtype=theano.config.floatX),
-            tt.scalar('A', dtype=theano.config.floatX)
-        ]
+        with theano.configparser.change_flags(compute_test_value='off'):
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
         theta = [0.23, inputs[0]]
         y0 = [inputs[1], 2., 0.]
         x = numpy.linspace(0, 1, 5)
@@ -469,10 +472,11 @@ class TestSymbolicComputation(unittest.TestCase):
     
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_symbolic_predict_dataset(self):
-        inputs = [
-            tt.scalar('beta', dtype=theano.config.floatX),
-            tt.scalar('A', dtype=theano.config.floatX)
-        ]
+        with theano.configparser.change_flags(compute_test_value='off'):
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
         theta = [0.23, inputs[0]]
         y0 = [inputs[1], 2., 0.]
         x = numpy.linspace(0, 1, 5)
@@ -530,10 +534,11 @@ class TestSymbolicComputation(unittest.TestCase):
     def test_integration_op(self):
         model = _mini_model()
 
-        inputs = [
-            tt.scalar('beta', dtype=theano.config.floatX),
-            tt.scalar('A', dtype=theano.config.floatX)
-        ]
+        with theano.configparser.change_flags(compute_test_value='off'):    
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
         theta = [0.23, inputs[0]]
         y0 = [inputs[1], 2., 0.]
         x = numpy.linspace(0, 1, 5)
@@ -558,10 +563,11 @@ class TestSymbolicComputation(unittest.TestCase):
     
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_computation_graph_for_dataset(self):
-        inputs = [
-            tt.scalar('beta', dtype=theano.config.floatX),
-            tt.scalar('A', dtype=theano.config.floatX)
-        ]
+        with theano.configparser.change_flags(compute_test_value='off'):
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
         theta = [0.23, inputs[0]]
         y0 = [inputs[1], 2., 0.]
         x = numpy.linspace(0, 1, 5)
