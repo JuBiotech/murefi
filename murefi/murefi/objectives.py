@@ -63,10 +63,11 @@ def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel
     }
     
     prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
+    L = []
     for iid, em_ts_list in mappings.items():
         predicted_replicate = prediction[iid]
         for (em, observed_ts) in em_ts_list:
             predicted_ts = predicted_replicate[em.dependent_key]
-            L = em.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=iid, dependent_key=em.dependent_key)
-    return
+            L.append = em.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=iid, dependent_key=em.dependent_key)
+    return L
 

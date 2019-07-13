@@ -33,6 +33,23 @@ def _mini_model():
             return [dAdt, dBdt, dCdt]
     return MiniModel(independent_keys=['A', 'B', 'C'])
 
+def _symbolic_mini_error_model(independent:str, dependent:str):
+    class SymEM(calibr8.ErrorModel):
+        def loglikelihood(self, *, y,  x, replicate_id=None, dependent_key=None, theta=None):
+            with pymc3.Model() as pmodel:
+                mu = 1
+                sigma = 0.2
+                df = 1
+                L = pymc3.StudentT(
+                  f'{replicate_id}.{dependent_key}',
+                    mu=mu,
+                    sd=sigma,
+                    nu=df,
+                    observed=y
+                )
+            return L
+    return SymEM(independent_key=independent, dependent_key=dependent)
+
 
 def _mini_error_model(independent:str, dependent:str):
     class EM(calibr8.ErrorModel):
@@ -537,6 +554,55 @@ class TestSymbolicComputation(unittest.TestCase):
         self.assertTrue(numpy.allclose(actual[1], expected['B']))
         self.assertTrue(numpy.allclose(actual[2], expected['C']))        
         return
+    
+    
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_computation_graph_for_dataset(self):
+        inputs = [
+            tt.scalar('beta', dtype=theano.config.floatX),
+            tt.scalar('A', dtype=theano.config.floatX)
+        ]
+        theta = [0.23, inputs[0]]
+        y0 = [inputs[1], 2., 0.]
+        x = numpy.linspace(0, 1, 5)
+        model = _mini_model()
+        
+        # create a parameter mapping
+        mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+        mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
+        mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
+        mapping = mapping.reset_index()
+        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        self.assertEqual(pm.ndim, 5)
+        self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+
+        # create a dataset
+        ds_template = murefi.Dataset()
+
+        # One replicate with one observation of A, two observations of C
+        template = murefi.Replicate('TestRep')
+        template['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+        template['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
+        ds_template['TestRep'] = template
+        template2 = murefi.Replicate('TestRep2')
+        template2['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+        template2['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        ds_template['TestRep2'] = template2
+        
+        L = murefi.objectives.computation_graph_for_dataset(ds_template, model, pm, error_models=[
+            _symbolic_mini_error_model('A', 'A'),
+            _symbolic_mini_error_model('C', 'C2'),
+            _symbolic_mini_error_model('C', 'C1'),
+            ],
+            theta_fit = y0 + theta
+        )
+        self.assertTrue(len(L)==5)
+        self.assertTrue(calibr8.istensor(L))
+
+        return
+
+
 
 
 if __name__ == '__main__':
