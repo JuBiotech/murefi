@@ -376,7 +376,7 @@ class TestSymbolicComputation(unittest.TestCase):
     def test_timeseries_support(self):
         x = numpy.linspace(0, 10, 10)
         with theano.configparser.change_flags(compute_test_value='off'):
-                y = tt.scalar('TestY', dtype=theano.config.floatX)
+            y = tt.scalar('TestY', dtype=theano.config.floatX)
             assert isinstance(y, tt.TensorVariable)
             ts = murefi.Timeseries(x, y, independent_key='Test', dependent_key='Test')
         return
