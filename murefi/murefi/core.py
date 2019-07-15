@@ -5,6 +5,9 @@ import numpy
 import pandas
 import scipy.stats
 
+import calibr8
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,14 +23,15 @@ class Timeseries(collections.Sized):
             dependent_key (str): key of the observed timeseries (no . characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
-        assert isinstance(y, (list, numpy.ndarray))
+        assert (isinstance(y, (list, numpy.ndarray)) or calibr8.istensor(y))
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
-        assert len(x) == len(y), 'x and y must have the same length.'
+        if not calibr8.istensor(y):
+            assert len(x) == len(y), 'x and y must have the same length.'
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
         self.x = numpy.array(x)
-        self.y = numpy.array(y)        
+        self.y = numpy.array(y)  if not calibr8.istensor(y) else y   
         self.independent_key = independent_key
         self.dependent_key = dependent_key
         return super().__init__()
@@ -92,6 +96,23 @@ class Replicate(collections.OrderedDict):
             else:
                 x_bmask[tskey] = numpy.repeat(False, len(x_any))
         return x_bmask
+
+    def get_observation_indices(self, keys_y:list) -> dict:
+        """Gets the index masks for observations of each y in [keys_y], relative to [x_any] and ts.x
+
+        Args:
+            keys_y (list): list of the timeseries keys for which indices are desired
+            x_any (array): array of timepoints that the indices shall be relative to
+
+        Returns:
+            dict: maps each ykey in keys_y to x_imask (array of indices in x_any)
+        """
+        bmask = self.get_observation_booleans(keys_y)
+        imask = {
+            yk : numpy.arange(len(mask), dtype=int)[mask]
+            for yk, mask in bmask.items()
+        }
+        return imask
     
     @staticmethod
     def make_template(tmin:float, tmax:float, independent_keys:list, iid:str=None, N:int=100):
@@ -229,15 +250,14 @@ class ParameterMapping(object):
             theta_dict (dict): dictionary of replicate-wise parameter vectors
         """
         pname_to_pvalue = {
-            pname : pvalue
-            for pname, pvalue in zip(self.parameters, theta_full)
+            pname : theta_full[p]
+            for p, pname in enumerate(self.parameters)
         }
         theta_dict = {
-            rkey : numpy.array([
+            rkey : tuple([
                 pname_to_pvalue[pname] if isinstance(pname, str) else pname
                 for pname in pnames
-            ], dtype=float)
+            ])
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict
-

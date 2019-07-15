@@ -3,10 +3,20 @@ import unittest
 import numpy
 import pandas
 import pathlib
+import scipy.integrate
 import scipy.stats as stats
 
 import calibr8
 import murefi
+
+
+try:
+    import pymc3
+    import theano
+    import theano.tensor as tt
+    HAVE_PYMC3 = True
+except ModuleNotFoundError:
+    HAVE_PYMC3 = False
 
 
 dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
@@ -23,12 +33,29 @@ def _mini_model():
             return [dAdt, dBdt, dCdt]
     return MiniModel(independent_keys=['A', 'B', 'C'])
 
+def _symbolic_mini_error_model(independent:str, dependent:str):
+    class SymEM(calibr8.ErrorModel):
+        def loglikelihood(self, *, y,  x, replicate_id=None, dependent_key=None, theta=None):
+            with pymc3.Model() as pmodel:
+                mu = 1
+                sigma = 0.2
+                df = 1
+                L = pymc3.StudentT(
+                  f'{replicate_id}.{dependent_key}',
+                    mu=mu,
+                    sd=sigma,
+                    nu=df,
+                    observed=y
+                )
+            return L
+    return SymEM(independent_key=independent, dependent_key=dependent)
+
 
 def _mini_error_model(independent:str, dependent:str):
     class EM(calibr8.ErrorModel):
-        def loglikelihood(self, *, y_obs,  y_hat, theta=None):
+        def loglikelihood(self, *, y,  x, theta=None):
             # assume Normal with sd=1
-            return numpy.sum(stats.norm.logpdf(y_obs-y_hat))
+            return numpy.sum(stats.norm.logpdf(y-x))
     return EM(independent_key=independent, dependent_key=dependent)
 
 
@@ -64,6 +91,21 @@ class ParameterMapTest(unittest.TestCase):
         self.assertEqual(parmap.ndim, 4)
         self.assertEqual(parmap.bounds, ((1,3), (3,4), (5,6), (7,8)))
         self.assertEqual(parmap.guesses, (0.1, 0.2, 0.3, 0.4))
+        self.assertEqual(parmap.mapping, {
+            'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
+            'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
+            })
+        parmap = murefi.ParameterMapping(map_df, bounds=None, guesses=None)
+        self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
+        self.assertDictEqual(parmap.parameters, collections.OrderedDict([
+            ('test1A', 'S_0'),
+            ('test1B', 'X_0'),
+            ('test2C', 'mue_max'),
+            ('test2D', 'K_S')
+            ]))
+        self.assertEqual(parmap.ndim, 4)
+        self.assertEqual(parmap.bounds,((None, None), (None, None), (None, None), (None, None)))
+        self.assertEqual(parmap.guesses, (None, None, None, None))
         self.assertEqual(parmap.mapping, {
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
@@ -122,7 +164,7 @@ class ParameterMapTest(unittest.TestCase):
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])
-            }
+        }
         self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
         for key in expected.keys():
             self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
@@ -156,6 +198,16 @@ class TestReplicate(unittest.TestCase):
         self.assertTrue(numpy.array_equal(result['S_observed'], [True,True,True,False,True,False,True,False]))
         self.assertTrue(numpy.array_equal(result['X_observed'], [False,True,True,True,False,True,True,True]))
         self.assertTrue(numpy.array_equal(result['P_observed'], [False,False,False,False,False,False,False,False]))
+        return
+
+    def test_observation_indices(self):
+        rep = murefi.Replicate('A01')
+        rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
+        rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
+        result = rep.get_observation_indices(['S_observed', 'X_observed', 'P_observed'])
+        self.assertTrue(numpy.array_equal(result['S_observed'], [0,1,2,4,6]))
+        self.assertTrue(numpy.array_equal(result['X_observed'], [1,2,3,5,6,7]))
+        self.assertTrue(numpy.array_equal(result['P_observed'], []))
         return
 
     def test_make_template(self):
@@ -233,7 +285,7 @@ class TestBaseODEModel(unittest.TestCase):
 
     def test_predict_dataset(self):
         model = _mini_model()
-
+        
         # create a template dataset
         dataset = murefi.Dataset()
         dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', N=60, iid='R1')
@@ -266,6 +318,23 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertEqual(len(prediction['R2'].x_any), 20)
         return
 
+
+class TestBaseODEModel(unittest.TestCase):
+    def test_attributes(self):
+        monod = murefi.MonodModel()
+        self.assertIsInstance(monod, murefi.BaseODEModel)
+        self.assertIsInstance(monod, murefi.MonodModel)
+        self.assertEqual(monod.n_y, 2)
+        self.assertSequenceEqual(monod.independent_keys, ['S', 'X'])
+    
+    def test_dydt(self):
+        monod = murefi.MonodModel()
+        y = numpy.array([0.1, 10])
+        t = 0
+        theta = numpy.array([0.5, 0.1, 0.5])
+        true = monod.dydt(y, t, theta)
+        expected = [-0.5, 0.25]
+    
 
 class TestObjectives(unittest.TestCase):
     def test_for_dataset(self):
@@ -300,6 +369,246 @@ class TestObjectives(unittest.TestCase):
         self.assertIsInstance(L, float)
         self.assertNotEqual(L, float('nan'))
         return
+
+
+class TestSymbolicComputation(unittest.TestCase):
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_timeseries_support(self):
+        x = numpy.linspace(0, 10, 10)
+        with theano.configparser.change_flags(compute_test_value='off'):
+            y = tt.scalar('TestY', dtype=theano.config.floatX)
+            assert isinstance(y, tt.TensorVariable)
+            ts = murefi.Timeseries(x, y, independent_key='Test', dependent_key='Test')
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_symbolic_parameter_mapping(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=dict(
+                S_0=(1,2),
+                X_0=(3,4),
+                mue_max=(5,6),
+                K_S=(7,8),
+                t_lag=(9,10),
+                t_acc=(11,12)
+            ), guesses=dict(
+                S_0=0.1,
+                X_0=0.2,
+                mue_max=0.3,
+                K_S=0.4,
+                t_lag=0.5,
+                t_acc=0.6
+            )
+        )
+
+        # create a theta that is a mix of constant and symbolic variables
+        with theano.configparser.change_flags(compute_test_value='off'):
+            theta_fitted = [1, tt.scalar('mu_max', dtype=theano.config.floatX), 13, tt.scalar('t_acc', dtype=theano.config.floatX)]
+
+            # map it to the two replicates
+            expected = {
+                'A01': numpy.array([1.0, None, 3.0, 4.0, 5.0, 6.0, 7.0]),
+                'B02': numpy.array([11.0, None, 13.0, None, 15.0, 16.0, 17.0])
+            }
+            mapped = parmap.repmap(theta_fitted)
+            self.assertEqual(mapped.keys(), expected.keys())
+            for rid in expected.keys():
+                for exp, act in zip(expected[rid], mapped[rid]):
+                    if exp is not None:
+                        self.assertTrue(exp, act)
+                    else:
+                        assert isinstance(act, tt.TensorVariable)
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_symbolic_predict_replicate(self):
+        with theano.configparser.change_flags(compute_test_value='off'):
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
+            theta = [0.23, inputs[0]]
+            y0 = [inputs[1], 2., 0.]
+            x = numpy.linspace(0, 1, 5)
+            model = _mini_model()
+            
+            template = murefi.Replicate('TestRep')
+            # one observation of A, two observations of C
+            template['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+            template['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+            template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
+
+            # construct the symbolic computation graph
+            prediction = model.predict_replicate(y0 + theta, template)
+
+            self.assertIsInstance(prediction, murefi.Replicate)
+            self.assertEqual(prediction.iid, 'TestRep')
+            self.assertIn('A', prediction)
+            self.assertFalse('B' in prediction)
+            self.assertIn('C1', prediction)
+            self.assertIn('C2', prediction)
+            
+            self.assertIsInstance(prediction['A'].y, tt.TensorVariable)
+            self.assertIsInstance(prediction['C1'].y, tt.TensorVariable)
+            self.assertIsInstance(prediction['C2'].y, tt.TensorVariable)
+
+            outputs = [
+                prediction['A'].y,
+                prediction['C1'].y,
+                prediction['C2'].y
+            ]
+
+            # compile a theano function for performing the computation
+            f = theano.function(inputs, outputs)
+
+            # compute the model outcome
+            actual = f(0.85, 2.0)
+
+            self.assertTrue(numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046]))
+            self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
+            self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
+        return
+    
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_symbolic_predict_dataset(self):
+        with theano.configparser.change_flags(compute_test_value='off'):
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
+            theta = [0.23, inputs[0]]
+            y0 = [inputs[1], 2., 0.]
+            x = numpy.linspace(0, 1, 5)
+            model = _mini_model()
+            
+            # create a parameter mapping
+            mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+            mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
+            mapping = mapping.reset_index()
+            pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+            self.assertEqual(pm.ndim, 5)
+            self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+
+            # create a dataset
+            ds_template = murefi.Dataset()
+
+            # One replicate with one observation of A, two observations of C
+            template = murefi.Replicate('TestRep')
+            template['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+            template['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+            template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
+            ds_template['TestRep'] = template
+
+            # construct the symbolic computation graph
+            prediction = model.predict_dataset(ds_template, pm, theta_fit = y0 + theta)
+
+            self.assertIsInstance(prediction, murefi.Dataset)
+            self.assertIn('A', prediction['TestRep'])
+            self.assertFalse('B' in prediction['TestRep'])
+            self.assertIn('C1', prediction['TestRep'])
+            self.assertIn('C2', prediction['TestRep'])
+            
+            self.assertIsInstance(prediction['TestRep']['A'].y, tt.TensorVariable)
+            self.assertIsInstance(prediction['TestRep']['C1'].y, tt.TensorVariable)
+            self.assertIsInstance(prediction['TestRep']['C2'].y, tt.TensorVariable)
+
+            outputs = [
+                prediction['TestRep']['A'].y,
+                prediction['TestRep']['C1'].y,
+                prediction['TestRep']['C2'].y
+            ]
+
+            # compile a theano function for performing the computation
+            f = theano.function(inputs, outputs)
+
+            # compute the model outcome
+            actual = f(0.85, 2.0)
+
+            self.assertTrue(numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046]))
+            self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
+            self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
+        return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_integration_op(self):
+        model = _mini_model()
+
+        with theano.configparser.change_flags(compute_test_value='off'):    
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
+            theta = [0.23, inputs[0]]
+            y0 = [inputs[1], 2., 0.]
+            x = numpy.linspace(0, 1, 5)
+
+            op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
+            outputs = op(y0, x, theta)
+
+            self.assertIsInstance(outputs, tt.TensorVariable)
+
+            # compile a theano function for performing the computation
+            f = theano.function(inputs, outputs)
+
+            # compute the model outcome
+            actual = f(0.83, 2.0)
+            expected = model.solver([2., 2., 0.], x, [0.23, 0.83])
+            
+            self.assertTrue(numpy.allclose(actual[0], expected['A']))
+            self.assertTrue(numpy.allclose(actual[1], expected['B']))
+            self.assertTrue(numpy.allclose(actual[2], expected['C']))        
+        return
+    
+    
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_computation_graph_for_dataset(self):
+        with theano.configparser.change_flags(compute_test_value='off'):
+            inputs = [
+                tt.scalar('beta', dtype=theano.config.floatX),
+                tt.scalar('A', dtype=theano.config.floatX)
+            ]
+            theta = [0.23, inputs[0]]
+            y0 = [inputs[1], 2., 0.]
+            x = numpy.linspace(0, 1, 5)
+            model = _mini_model()
+            
+            # create a parameter mapping
+            mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+            mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
+            mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
+            mapping = mapping.reset_index()
+            pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+            self.assertEqual(pm.ndim, 5)
+            self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+
+            # create a dataset
+            ds_template = murefi.Dataset()
+
+            # One replicate with one observation of A, two observations of C
+            template = murefi.Replicate('TestRep')
+            template['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+            template['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+            template['C2'] = murefi.Timeseries(x[1:4], [0]*3, independent_key='C', dependent_key='C2')
+            ds_template['TestRep'] = template
+            template2 = murefi.Replicate('TestRep2')
+            template2['A'] = murefi.Timeseries(x[:3], [0]*3, independent_key='A', dependent_key='A')
+            template2['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
+            ds_template['TestRep2'] = template2
+            
+            L = murefi.objectives.computation_graph_for_dataset(ds_template, model, pm, error_models=[
+                _symbolic_mini_error_model('A', 'A'),
+                _symbolic_mini_error_model('C', 'C2'),
+                _symbolic_mini_error_model('C', 'C1'),
+                ],
+                theta_fit = y0 + theta
+            )
+            self.assertTrue(len(L)==5)
+            self.assertTrue(calibr8.istensor(L))
+
+        return
+
+
 
 
 if __name__ == '__main__':
