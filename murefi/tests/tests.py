@@ -183,6 +183,7 @@ class TestDataset(unittest.TestCase):
 
     def test_make_template(self):
         template = murefi.Dataset.make_template(0.5, 3.5, independent_keys='ABC', rids='R1,R2,R3,R4'.split(','), N=20)
+        self.assertIsInstance(template, murefi.Dataset)
         self.assertIn('R1', template)
         self.assertIn('R2', template)
         self.assertIn('R3', template)

@@ -167,10 +167,10 @@ class Dataset(collections.OrderedDict):
         Returns:
             dataset (Dataset): dataset object containing Replicates with dense timeseries of random y data
         """
-        return {
-            rid : Replicate.make_template(tmin, tmax, independent_keys, iid=rid, N=N)
-            for rid in rids
-        }
+        ds = Dataset()
+        for rid in rids:
+            ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, iid=rid, N=N)
+        return ds
 
 
 class ParameterMapping(object):
