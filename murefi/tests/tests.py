@@ -181,6 +181,15 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(list(ds.keys()), ['A01'])
         return
 
+    def test_make_template(self):
+        template = murefi.Dataset.make_template(0.5, 3.5, independent_keys='ABC', rids='R1,R2,R3,R4'.split(','), N=20)
+        self.assertIn('R1', template)
+        self.assertIn('R2', template)
+        self.assertIn('R3', template)
+        self.assertTrue(template['R1']['A'].x[0] == 0.5)
+        self.assertTrue(template['R2']['B'].x[-1] == 3.5)
+        self.assertTrue(len(template['R3']['C'].x) == 20)
+        return
 
 class TestReplicate(unittest.TestCase):
     def test_x_any(self):

@@ -153,6 +153,25 @@ class Dataset(collections.OrderedDict):
             value.iid = key
         return super().__setitem__(key, value)
 
+    @staticmethod
+    def make_template(tmin:float, tmax:float, independent_keys:list, rids:list, N:int=100):
+        """Create a dense template Dataset for plotting-predictions.
+
+        Args:
+            tmin (float): first timepoint
+            tmax (float): last timepoint
+            independent_keys (list): list of independent variable keys to include in the template
+            rids (list): replicates ids that shall be present in the Dataset
+            N (int): total number of timepoints (default: 100)
+        
+        Returns:
+            dataset (Dataset): dataset object containing Replicates with dense timeseries of random y data
+        """
+        return {
+            rid : Replicate.make_template(tmin, tmax, independent_keys, iid=rid, N=N)
+            for rid in rids
+        }
+
 
 class ParameterMapping(object):
     @property
