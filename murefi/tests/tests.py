@@ -302,7 +302,7 @@ class TestBaseODEModel(unittest.TestCase):
         dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, iid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
         mapping = mapping.reset_index()
@@ -360,7 +360,7 @@ class TestObjectives(unittest.TestCase):
                 ts.y = numpy.repeat(0.5, len(ts))
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
         mapping = mapping.reset_index()
@@ -493,7 +493,7 @@ class TestSymbolicComputation(unittest.TestCase):
             model = _mini_model()
             
             # create a parameter mapping
-            mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+            mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
@@ -584,7 +584,7 @@ class TestSymbolicComputation(unittest.TestCase):
             model = _mini_model()
             
             # create a parameter mapping
-            mapping = pandas.DataFrame(columns=['id,A0,B0,C0,alpha,beta'.split(',')]).set_index('id')
+            mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping = mapping.reset_index()
