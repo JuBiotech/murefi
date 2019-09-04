@@ -1,5 +1,5 @@
-[![pipeline status](https://gitlab.com/diginbio-fzj/murefi/badges/master/pipeline.svg)](https://gitlab.com/diginbio-fzj/murefi/commits/master)
-[![coverage report](https://gitlab.com/diginbio-fzj/murefi/badges/master/coverage.svg)](https://gitlab.com/diginbio-fzj/murefi/commits/master)
+[![pipeline status](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/badges/master/pipeline.svg)](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/commits/master)
+[![coverage report](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/badges/master/coverage.svg)](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/commits/master)
 
 # murefi
 
