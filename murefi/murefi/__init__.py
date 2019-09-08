@@ -1,7 +1,7 @@
-from . core import Timeseries, Replicate, Dataset, ParameterMapping
+from . core import Timeseries, Replicate, Dataset, ParameterMapping, load_dataset
 from . import objectives
 from . ode import BaseODEModel
 from . contrib import MonodModel
 
 
-__version__ = '2.3.0'
+__version__ = '2.4.0'

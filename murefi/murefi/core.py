@@ -1,9 +1,11 @@
 import abc
 import collections
 import logging
+import netCDF4
 import numpy
 import pandas
 import scipy.stats
+import xarray
 
 import calibr8
 
@@ -19,8 +21,8 @@ class Timeseries(collections.Sized):
         Args:
             x (list or ndarray): timepoints
             y (list of ndarray): observations (same length as x)
-            independent_key (str): key of the independent variable (no . characters allowed)
-            dependent_key (str): key of the observed timeseries (no . characters allowed)
+            independent_key (str): key of the independent variable (no . or / characters allowed)
+            dependent_key (str): key of the observed timeseries (no . or / characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
         assert (isinstance(y, (list, numpy.ndarray)) or calibr8.istensor(y))
@@ -35,6 +37,60 @@ class Timeseries(collections.Sized):
         self.independent_key = independent_key
         self.dependent_key = dependent_key
         return super().__init__()
+
+    def to_xarray(self) -> xarray.Dataset:
+        """Convert Timeseries to xarray.Dataset."""
+        ds = xarray.DataArray(
+            self.y,
+            coords=[self.x],
+            dims=['time']
+        ).to_dataset(name=self.dependent_key)
+        ds.attrs['independent_key'] = self.independent_key
+        ds.attrs['dependent_key'] = self.dependent_key
+        return ds
+
+    @staticmethod
+    def from_xarray(ds:xarray.Dataset):
+        """Convert xarray.Dataset to Timeseries."""
+        ts = Timeseries(
+            x=ds.time.values,
+            y=ds[ds.dependent_key].values,
+            independent_key=ds.independent_key,
+            dependent_key=ds.dependent_key
+        )
+        return ts
+
+    def to_group(self, grep:netCDF4.Group):
+        """Store the Timeseries to a netCDF4.Group.
+        
+        Args:
+            grep (netCDF4.Group): parent group
+        """
+        g = grep.createGroup(self.dependent_key)
+        # create two 1-dimensional variables (dimension is 'time')
+        g.createDimension('time', len(self))
+        times = g.createVariable('time', numpy.float, ('time',), fill_value=float('nan'))
+        values = g.createVariable(self.dependent_key, numpy.float, ('time',), fill_value=float('nan'))
+        times[:] = self.x    
+        values[:] = self.y
+        g.setncattr('independent_key', self.independent_key)
+        g.setncattr('dependent_key', self.dependent_key)    
+        return
+
+    @staticmethod
+    def from_group(gts:netCDF4.Group):
+        """Read a Timeseries from a netCDF4.Group.
+        
+        Args:
+            gts (netCDF4.Group): group of the timeseries
+        """
+        ts = Timeseries(
+            x=numpy.array(gts['time']),
+            y=numpy.array(gts[gts.dependent_key]),
+            independent_key=gts.independent_key,
+            dependent_key=gts.dependent_key
+        )
+        return ts
 
     def __len__(self):
         return len(self.x)
@@ -172,6 +228,21 @@ class Dataset(collections.OrderedDict):
             ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, iid=rid, N=N)
         return ds
 
+    def save(self, filepath:str):
+        """Saves the Dataset to a NetCDF4 file.
+
+        Can be loaded with `murefi.load_dataset`.
+
+        Args:
+            filepath (str): file path or name to save
+        """
+        with netCDF4.Dataset(filepath, 'w') as nc:
+            for rid, rep in self.items():
+                grep = nc.createGroup(rid)
+                for dkey, ts in rep.items():
+                    ts.to_group(grep)
+        return
+
 
 class ParameterMapping(object):
     @property
@@ -280,3 +351,22 @@ class ParameterMapping(object):
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict
+
+
+def load_dataset(filepath:str) -> Dataset:
+    """Load a Dataset from a NetCDF4 file.
+
+    Args:
+        filepath (str): path to the file containing the data
+
+    Returns:
+        dataset (Dataset)
+    """
+    ds = Dataset()
+    with netCDF4.Dataset(filepath, 'r') as nc:
+        for rid, grep in nc.groups.items():
+            rep = Replicate(rid)
+            for dkey, gts in grep.groups.items():
+                rep[dkey] = Timeseries.from_group(gts)
+            ds[rid] = rep
+    return ds

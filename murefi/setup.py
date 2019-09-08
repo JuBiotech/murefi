@@ -34,6 +34,7 @@ setuptools.setup(name = __packagename__,
             'pandas',
             'numpy',
             'scipy',
+            'netCDF4', 'xarray',
             'calibr8'
         ]
 )
