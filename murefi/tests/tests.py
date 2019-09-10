@@ -6,7 +6,6 @@ import pathlib
 import scipy.integrate
 import scipy.stats as stats
 import tempfile
-import xarray
 
 import calibr8
 import murefi

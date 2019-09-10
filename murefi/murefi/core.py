@@ -5,7 +5,6 @@ import logging
 import numpy
 import pandas
 import scipy.stats
-import xarray
 
 import calibr8
 
