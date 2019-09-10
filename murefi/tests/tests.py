@@ -621,33 +621,12 @@ class TestSymbolicComputation(unittest.TestCase):
         return
 
 
-class TestXArrayConversion(unittest.TestCase):
-    def test_timeseries_conversion(self):
-        tstest = murefi.Timeseries(
-            x=numpy.arange(10),
-            y=numpy.random.uniform(size=10),
-            independent_key='ikey',
-            dependent_key='dkey',
-        )
-        arr = tstest.to_xarray()
-        self.assertIsInstance(arr, xarray.Dataset)
-
-        ts = murefi.Timeseries.from_xarray(arr)
-        self.assertIsInstance(ts, murefi.Timeseries)
-        self.assertEqual(tstest.independent_key, ts.independent_key)
-        self.assertEqual(tstest.dependent_key, ts.dependent_key)
-        numpy.testing.assert_array_equal(tstest.x, ts.x)
-        numpy.testing.assert_array_equal(tstest.y, ts.y)
-
-        return
-
-
 class TestNetCDFstorage(unittest.TestCase):
     def _test_save_and_load(self, ds_original):
         # use a temporary directory, because a tempfile.NamedTemporaryFile can not be opened
         # multiple times on all platforms (https://docs.python.org/3/library/tempfile.html#tempfile.NamedTemporaryFile)
         with tempfile.TemporaryDirectory() as dir:
-            fp = pathlib.Path(dir, 'testing.nc')
+            fp = pathlib.Path(dir, 'testing.h5')
             ds_original.save(fp)
             ds_loaded = murefi.load_dataset(fp)
 

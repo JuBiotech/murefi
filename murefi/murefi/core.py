@@ -1,7 +1,7 @@
 import abc
 import collections
+import h5py
 import logging
-import netCDF4
 import numpy
 import pandas
 import scipy.stats
@@ -38,57 +38,32 @@ class Timeseries(collections.Sized):
         self.dependent_key = dependent_key
         return super().__init__()
 
-    def to_xarray(self) -> xarray.Dataset:
-        """Convert Timeseries to xarray.Dataset."""
-        ds = xarray.DataArray(
-            self.y,
-            coords=[self.x],
-            dims=['time']
-        ).to_dataset(name=self.dependent_key)
-        ds.attrs['independent_key'] = self.independent_key
-        ds.attrs['dependent_key'] = self.dependent_key
-        return ds
-
-    @staticmethod
-    def from_xarray(ds:xarray.Dataset):
-        """Convert xarray.Dataset to Timeseries."""
-        ts = Timeseries(
-            x=ds.time.values,
-            y=ds[ds.dependent_key].values,
-            independent_key=ds.independent_key,
-            dependent_key=ds.dependent_key
-        )
-        return ts
-
-    def to_group(self, grep:netCDF4.Group):
-        """Store the Timeseries to a netCDF4.Group.
+    def to_dataset(self, grep:h5py.Group):
+        """Store the Timeseries to a h5py.Dataset within the provided group.
         
         Args:
-            grep (netCDF4.Group): parent group
+            grep (h5py.Group): parent group
         """
-        g = grep.createGroup(self.dependent_key)
-        # create two 1-dimensional variables (dimension is 'time')
-        g.createDimension('time', len(self))
-        times = g.createVariable('time', numpy.float, ('time',), fill_value=float('nan'))
-        values = g.createVariable(self.dependent_key, numpy.float, ('time',), fill_value=float('nan'))
-        times[:] = self.x    
-        values[:] = self.y
-        g.setncattr('independent_key', self.independent_key)
-        g.setncattr('dependent_key', self.dependent_key)    
+        ds = grep.create_dataset(
+            self.dependent_key, (2,len(self)), dtype=float,
+            data=(self.x, self.y)
+        )
+        ds.attrs['independent_key'] = self.independent_key
+        ds.attrs['dependent_key'] = self.dependent_key
         return
 
     @staticmethod
-    def from_group(gts:netCDF4.Group):
-        """Read a Timeseries from a netCDF4.Group.
+    def from_dataset(tsds:h5py.Dataset):
+        """Read a Timeseries from a h5py.Dataset.
         
         Args:
-            gts (netCDF4.Group): group of the timeseries
+            gts (h5py.Dataset): dataset of the timeseries
         """
         ts = Timeseries(
-            x=numpy.array(gts['time']),
-            y=numpy.array(gts[gts.dependent_key]),
-            independent_key=gts.independent_key,
-            dependent_key=gts.dependent_key
+            x=tsds[0,:],
+            y=tsds[1,:],
+            independent_key=tsds.attrs['independent_key'],
+            dependent_key=tsds.attrs['dependent_key']
         )
         return ts
 
@@ -229,18 +204,18 @@ class Dataset(collections.OrderedDict):
         return ds
 
     def save(self, filepath:str):
-        """Saves the Dataset to a NetCDF4 file.
+        """Saves the Dataset to a HDF5 file.
 
         Can be loaded with `murefi.load_dataset`.
 
         Args:
             filepath (str): file path or name to save
         """
-        with netCDF4.Dataset(filepath, 'w') as nc:
+        with h5py.File(filepath, 'w') as hfile:
             for rid, rep in self.items():
-                grep = nc.createGroup(rid)
+                grep = hfile.create_group(rid)
                 for dkey, ts in rep.items():
-                    ts.to_group(grep)
+                    ts.to_dataset(grep)
         return
 
 
@@ -354,7 +329,7 @@ class ParameterMapping(object):
 
 
 def load_dataset(filepath:str) -> Dataset:
-    """Load a Dataset from a NetCDF4 file.
+    """Load a Dataset from a HDF5 file.
 
     Args:
         filepath (str): path to the file containing the data
@@ -363,10 +338,10 @@ def load_dataset(filepath:str) -> Dataset:
         dataset (Dataset)
     """
     ds = Dataset()
-    with netCDF4.Dataset(filepath, 'r') as nc:
-        for rid, grep in nc.groups.items():
+    with h5py.File(filepath, 'r') as hfile:
+        for rid, grep in hfile.items():
             rep = Replicate(rid)
-            for dkey, gts in grep.groups.items():
-                rep[dkey] = Timeseries.from_group(gts)
+            for dkey, tsds in grep.items():
+                rep[dkey] = Timeseries.from_dataset(tsds)
             ds[rid] = rep
     return ds
