@@ -93,7 +93,7 @@ class BaseODEModel(object):
 
         # Slice prediction into x_hat and y_hat 
         # Create Timeseries objects which are fed to a new Replicate object pred
-        pred = Replicate(template.iid)
+        pred = Replicate(template.rid)
         for dependent_key, template_ts in template.items():
             independent_key = template_ts.independent_key
             mask = masks[dependent_key]
@@ -121,6 +121,6 @@ class BaseODEModel(object):
         prediction = Dataset()
         theta_dict = par_map.repmap(theta_fit)
 
-        for iid, replicate in template.items():
-            prediction[iid] = self.predict_replicate(theta_dict[iid], replicate)
+        for rid, replicate in template.items():
+            prediction[rid] = self.predict_replicate(theta_dict[rid], replicate)
         return prediction

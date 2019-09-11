@@ -283,7 +283,7 @@ class TestBaseODEModel(unittest.TestCase):
         prediction = model.predict_replicate(y0 + theta, template)
 
         self.assertIsInstance(prediction, murefi.Replicate)
-        self.assertEqual(prediction.iid, 'TestRep')
+        self.assertEqual(prediction.rid, 'TestRep')
         self.assertIn('A', prediction)
         self.assertFalse('B' in prediction)
         self.assertIn('C1', prediction)
@@ -299,8 +299,8 @@ class TestBaseODEModel(unittest.TestCase):
         
         # create a template dataset
         dataset = murefi.Dataset()
-        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', N=60, iid='R1')
-        dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, iid='R2')
+        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', N=60, rid='R1')
+        dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
         mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
@@ -353,8 +353,8 @@ class TestObjectives(unittest.TestCase):
 
         # create a template dataset (uses numpy.empty to create y-values!)
         dataset = murefi.Dataset()
-        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', iid='R1')
-        dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, iid='R2')
+        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', rid='R1')
+        dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
         # set all y-values to 0.5 to avoid NaNs in the loglikelihood
         for _, rep in dataset.items():
             for _, ts in rep.items():
@@ -454,7 +454,7 @@ class TestSymbolicComputation(unittest.TestCase):
             prediction = model.predict_replicate(y0 + theta, template)
 
             self.assertIsInstance(prediction, murefi.Replicate)
-            self.assertEqual(prediction.iid, 'TestRep')
+            self.assertEqual(prediction.rid, 'TestRep')
             self.assertIn('A', prediction)
             self.assertFalse('B' in prediction)
             self.assertIn('C1', prediction)
