@@ -620,7 +620,7 @@ class TestSymbolicComputation(unittest.TestCase):
         return
 
 
-class TestNetCDFstorage(unittest.TestCase):
+class TestHDF5storage(unittest.TestCase):
     def _test_save_and_load(self, ds_original):
         # use a temporary directory, because a tempfile.NamedTemporaryFile can not be opened
         # multiple times on all platforms (https://docs.python.org/3/library/tempfile.html#tempfile.NamedTemporaryFile)
