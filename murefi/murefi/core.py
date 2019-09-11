@@ -37,7 +37,7 @@ class Timeseries(collections.Sized):
         self.dependent_key = dependent_key
         return super().__init__()
 
-    def to_dataset(self, grep:h5py.Group):
+    def _to_dataset(self, grep:h5py.Group):
         """Store the Timeseries to a h5py.Dataset within the provided group.
         
         Args:
@@ -52,7 +52,7 @@ class Timeseries(collections.Sized):
         return
 
     @staticmethod
-    def from_dataset(tsds:h5py.Dataset):
+    def _from_dataset(tsds:h5py.Dataset):
         """Read a Timeseries from a h5py.Dataset.
         
         Args:
@@ -214,8 +214,27 @@ class Dataset(collections.OrderedDict):
             for rid, rep in self.items():
                 grep = hfile.create_group(rid)
                 for dkey, ts in rep.items():
-                    ts.to_dataset(grep)
+                    ts._to_dataset(grep)
         return
+
+    @staticmethod
+    def load(filepath:str):
+        """Load a Dataset from a HDF5 file.
+
+        Args:
+            filepath (str): path to the file containing the data
+
+        Returns:
+            dataset (Dataset)
+        """
+        ds = Dataset()
+        with h5py.File(filepath, 'r') as hfile:
+            for rid, grep in hfile.items():
+                rep = Replicate(rid)
+                for dkey, tsds in grep.items():
+                    rep[dkey] = Timeseries._from_dataset(tsds)
+                ds[rid] = rep
+        return ds
 
 
 class ParameterMapping(object):
@@ -327,6 +346,17 @@ class ParameterMapping(object):
         return theta_dict
 
 
+def save_dataset(dataset:Dataset, filepath:str):
+    """Saves a Dataset to a HDF5 file.
+
+    Can be loaded with `murefi.load_dataset`.
+
+    Args:
+        filepath (str): file path or name to save
+    """
+    return dataset.save(filepath)
+
+
 def load_dataset(filepath:str) -> Dataset:
     """Load a Dataset from a HDF5 file.
 
@@ -336,11 +366,5 @@ def load_dataset(filepath:str) -> Dataset:
     Returns:
         dataset (Dataset)
     """
-    ds = Dataset()
-    with h5py.File(filepath, 'r') as hfile:
-        for rid, grep in hfile.items():
-            rep = Replicate(rid)
-            for dkey, tsds in grep.items():
-                rep[dkey] = Timeseries.from_dataset(tsds)
-            ds[rid] = rep
-    return ds
+    return Dataset.load(filepath)
+    

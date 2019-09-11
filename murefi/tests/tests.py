@@ -626,7 +626,7 @@ class TestNetCDFstorage(unittest.TestCase):
         # multiple times on all platforms (https://docs.python.org/3/library/tempfile.html#tempfile.NamedTemporaryFile)
         with tempfile.TemporaryDirectory() as dir:
             fp = pathlib.Path(dir, 'testing.h5')
-            ds_original.save(fp)
+            murefi.save_dataset(ds_original, fp)
             ds_loaded = murefi.load_dataset(fp)
 
         self.assertIsInstance(ds_loaded, murefi.Dataset)
