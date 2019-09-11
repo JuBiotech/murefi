@@ -5,6 +5,7 @@ import pandas
 import pathlib
 import scipy.integrate
 import scipy.stats as stats
+import tempfile
 
 import calibr8
 import murefi
@@ -619,6 +620,45 @@ class TestSymbolicComputation(unittest.TestCase):
         return
 
 
+class TestNetCDFstorage(unittest.TestCase):
+    def _test_save_and_load(self, ds_original):
+        # use a temporary directory, because a tempfile.NamedTemporaryFile can not be opened
+        # multiple times on all platforms (https://docs.python.org/3/library/tempfile.html#tempfile.NamedTemporaryFile)
+        with tempfile.TemporaryDirectory() as dir:
+            fp = pathlib.Path(dir, 'testing.h5')
+            murefi.save_dataset(ds_original, fp)
+            ds_loaded = murefi.load_dataset(fp)
+
+        self.assertIsInstance(ds_loaded, murefi.Dataset)
+        self.assertEqual(set(ds_original.keys()), set(ds_loaded.keys()))
+
+        for rid, rep_orig in ds_original.items():
+            for dkey, ts_orig in rep_orig.items():
+                ts_loaded = ds_loaded[rid][dkey]
+                self.assertIsInstance(ts_loaded, murefi.Timeseries)
+                self.assertEqual(ts_orig.independent_key, ts_loaded.independent_key)
+                self.assertEqual(ts_orig.dependent_key, ts_loaded.dependent_key)
+                numpy.testing.assert_array_equal(ts_orig.x, ts_loaded.x)
+                numpy.testing.assert_array_equal(ts_orig.y, ts_loaded.y)
+        return
+
+    def test_empty_dataset(self):
+        ds = murefi.Dataset()
+        self._test_save_and_load(ds)
+        
+    def test_standard_dataset(self):
+        ds = murefi.Dataset.make_template(tmin=0, tmax=5, independent_keys='SXP', rids=['R1', 'R2', 'R3'])
+        self._test_save_and_load(ds)
+        return
+
+    def test_empty_replicate(self):
+        ds = murefi.Dataset.make_template(tmin=0, tmax=5, independent_keys='SXP', rids=['R1', 'R2', 'R3'])
+        ds['R2'].pop('S')
+        ds['R2'].pop('X')
+        ds['R2'].pop('P')
+        self.assertEqual(len(ds['R2']), 0)
+        self._test_save_and_load(ds)
+        return
 
 
 if __name__ == '__main__':

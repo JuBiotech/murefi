@@ -1,5 +1,6 @@
 import abc
 import collections
+import h5py
 import logging
 import numpy
 import pandas
@@ -19,8 +20,8 @@ class Timeseries(collections.Sized):
         Args:
             x (list or ndarray): timepoints
             y (list of ndarray): observations (same length as x)
-            independent_key (str): key of the independent variable (no . characters allowed)
-            dependent_key (str): key of the observed timeseries (no . characters allowed)
+            independent_key (str): key of the independent variable (no . or / characters allowed)
+            dependent_key (str): key of the observed timeseries (no . or / characters allowed)
         """
         assert isinstance(x, (list, numpy.ndarray))
         assert (isinstance(y, (list, numpy.ndarray)) or calibr8.istensor(y))
@@ -35,6 +36,35 @@ class Timeseries(collections.Sized):
         self.independent_key = independent_key
         self.dependent_key = dependent_key
         return super().__init__()
+
+    def _to_dataset(self, grep:h5py.Group):
+        """Store the Timeseries to a h5py.Dataset within the provided group.
+        
+        Args:
+            grep (h5py.Group): parent group
+        """
+        ds = grep.create_dataset(
+            self.dependent_key, (2,len(self)), dtype=float,
+            data=(self.x, self.y)
+        )
+        ds.attrs['independent_key'] = self.independent_key
+        ds.attrs['dependent_key'] = self.dependent_key
+        return
+
+    @staticmethod
+    def _from_dataset(tsds:h5py.Dataset):
+        """Read a Timeseries from a h5py.Dataset.
+        
+        Args:
+            gts (h5py.Dataset): dataset of the timeseries
+        """
+        ts = Timeseries(
+            x=tsds[0,:],
+            y=tsds[1,:],
+            independent_key=tsds.attrs['independent_key'],
+            dependent_key=tsds.attrs['dependent_key']
+        )
+        return ts
 
     def __len__(self):
         return len(self.x)
@@ -172,6 +202,40 @@ class Dataset(collections.OrderedDict):
             ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, iid=rid, N=N)
         return ds
 
+    def save(self, filepath:str):
+        """Saves the Dataset to a HDF5 file.
+
+        Can be loaded with `murefi.load_dataset`.
+
+        Args:
+            filepath (str): file path or name to save
+        """
+        with h5py.File(filepath, 'w') as hfile:
+            for rid, rep in self.items():
+                grep = hfile.create_group(rid)
+                for dkey, ts in rep.items():
+                    ts._to_dataset(grep)
+        return
+
+    @staticmethod
+    def load(filepath:str):
+        """Load a Dataset from a HDF5 file.
+
+        Args:
+            filepath (str): path to the file containing the data
+
+        Returns:
+            dataset (Dataset)
+        """
+        ds = Dataset()
+        with h5py.File(filepath, 'r') as hfile:
+            for rid, grep in hfile.items():
+                rep = Replicate(rid)
+                for dkey, tsds in grep.items():
+                    rep[dkey] = Timeseries._from_dataset(tsds)
+                ds[rid] = rep
+        return ds
+
 
 class ParameterMapping(object):
     @property
@@ -280,3 +344,27 @@ class ParameterMapping(object):
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict
+
+
+def save_dataset(dataset:Dataset, filepath:str):
+    """Saves a Dataset to a HDF5 file.
+
+    Can be loaded with `murefi.load_dataset`.
+
+    Args:
+        filepath (str): file path or name to save
+    """
+    return dataset.save(filepath)
+
+
+def load_dataset(filepath:str) -> Dataset:
+    """Load a Dataset from a HDF5 file.
+
+    Args:
+        filepath (str): path to the file containing the data
+
+    Returns:
+        dataset (Dataset)
+    """
+    return Dataset.load(filepath)
+    

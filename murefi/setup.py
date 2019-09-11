@@ -34,6 +34,7 @@ setuptools.setup(name = __packagename__,
             'pandas',
             'numpy',
             'scipy',
+            'h5py',
             'calibr8'
         ]
 )
