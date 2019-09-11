@@ -16,21 +16,21 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
     """
     
     mappings = {
-        iid : [
+        rid : [
             # pairs of ErrorModel and observed Timeseries
             (em, rep_obs[em.dependent_key])
             for em in error_models
             if em.dependent_key in rep_obs
         ]
-        for iid, rep_obs in dataset.items()
+        for rid, rep_obs in dataset.items()
     }
     
     def negative_loglikelihood_dataset(theta_fit):
         L = 0
         prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
 
-        for iid, em_ts_list in mappings.items():
-            predicted_replicate = prediction[iid]
+        for rid, em_ts_list in mappings.items():
+            predicted_replicate = prediction[rid]
             for (em, observed_ts) in em_ts_list:
                 predicted_ts = predicted_replicate[em.dependent_key]
                 L += em.loglikelihood(y=observed_ts.y, x=predicted_ts.y)
@@ -53,21 +53,21 @@ def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel
     """
     
     mappings = {
-        iid : [
+        rid : [
             # pairs of ErrorModel and observed Timeseries
             (em, rep_obs[em.dependent_key])
             for em in error_models
             if em.dependent_key in rep_obs
         ]
-        for iid, rep_obs in dataset.items()
+        for rid, rep_obs in dataset.items()
     }
     
     prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
     L = []
-    for iid, em_ts_list in mappings.items():
-        predicted_replicate = prediction[iid]
+    for rid, em_ts_list in mappings.items():
+        predicted_replicate = prediction[rid]
         for (em, observed_ts) in em_ts_list:
             predicted_ts = predicted_replicate[em.dependent_key]
-            L.append(em.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=iid, dependent_key=em.dependent_key))
+            L.append(em.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=rid, dependent_key=em.dependent_key))
     return L
 

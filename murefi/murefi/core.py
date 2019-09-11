@@ -78,12 +78,12 @@ class Timeseries(collections.Sized):
 
 class Replicate(collections.OrderedDict):
     """A replicate contains one or more timeseries."""
-    def __init__(self, iid:str=None):
+    def __init__(self, rid:str=None):
         """Create a data instance.
         Args:
-            iid (str or None): the unique instance ID of the replicate
+            rid (str or None): the unique instance ID of the replicate
         """
-        self.iid = iid
+        self.rid = rid
         if not hasattr(self, 'default_x_any'):
             self.default_x_any = numpy.arange(0, 1, 0.1)
         return super().__init__()
@@ -145,21 +145,21 @@ class Replicate(collections.OrderedDict):
         return imask
     
     @staticmethod
-    def make_template(tmin:float, tmax:float, independent_keys:list, iid:str=None, N:int=100):
+    def make_template(tmin:float, tmax:float, independent_keys:list, rid:str=None, N:int=100):
         """Create a dense template Replicate for plotting-predictions.
 
         Args:
             tmin (float): first timepoint
             tmax (float): last timepoint
             independent_keys (list): list of independent variable keys to include in the template
-            iid (str): optional replicate id
+            rid (str): optional replicate id
             N (int): total number of timepoints (default: 100)
         
         Returns:
             replicate (Replicate): replicate object containing dense timeseries with random y data
         """
         x = numpy.linspace(tmin, tmax, N)
-        rep = Replicate(iid)
+        rep = Replicate(rid)
         for yk in independent_keys:
             rep[yk] = Timeseries(x, numpy.empty((N,)), independent_key=yk, dependent_key=yk)
         return rep
@@ -177,10 +177,10 @@ class Dataset(collections.OrderedDict):
 
     def __setitem__(self, key:str, value:Replicate):
         assert isinstance(value, Replicate)
-        if not key == value.iid:
-            logger.warn(f'The key "{key}" did not match value.iid "{value.iid}".' \
-                         'Setting value.iid = key...')
-            value.iid = key
+        if not key == value.rid:
+            logger.warn(f'The key "{key}" did not match value.rid "{value.rid}".' \
+                         'Setting value.rid = key...')
+            value.rid = key
         return super().__setitem__(key, value)
 
     @staticmethod
@@ -199,7 +199,7 @@ class Dataset(collections.OrderedDict):
         """
         ds = Dataset()
         for rid in rids:
-            ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, iid=rid, N=N)
+            ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, rid=rid, N=N)
         return ds
 
     def save(self, filepath:str):
