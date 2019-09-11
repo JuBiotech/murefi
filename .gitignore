@@ -14,4 +14,4 @@
 *.pyc
 .coverage*
 murefi/examples/Sandbox.ipynb
-*.nc
+*.h5
