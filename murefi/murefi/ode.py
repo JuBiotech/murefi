@@ -3,7 +3,8 @@ import numpy
 import scipy.integrate
 
 import calibr8
-from . core import Replicate, Timeseries, Dataset, ParameterMapping
+from . core import ParameterMapping
+from . datastructures import Timeseries, Replicate, Dataset
 from . import symbolic
 
 

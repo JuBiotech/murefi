@@ -1,7 +1,8 @@
 import numpy
 
 import calibr8
-from . core import Timeseries, Replicate, Dataset, ParameterMapping
+from . core import ParameterMapping
+from . datastructures import Timeseries, Replicate, Dataset
 from . ode import BaseODEModel
 
 
