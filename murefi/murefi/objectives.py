@@ -1,4 +1,5 @@
 import numpy
+import typing
 
 import calibr8
 from . core import ParameterMapping
@@ -6,7 +7,7 @@ from . datastructures import Timeseries, Replicate, Dataset
 from . ode import BaseODEModel
 
 
-def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: calibr8.ErrorModel):
+def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel]):
     """Creates an objective function for fitting a Dataset
     
     Args:
@@ -42,7 +43,7 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
     return negative_loglikelihood_dataset
 
 
-def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: calibr8.ErrorModel, theta_fit):
+def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel], theta_fit):
     """Builds the computation graph for infering parameters of a Dataset with MCMC.
     
     Args:
