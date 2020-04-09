@@ -2,6 +2,7 @@ import collections
 import logging
 import numpy
 import pandas
+import typing
 
 import calibr8
 
@@ -17,8 +18,13 @@ class ParameterMapping(object):
         
     @property
     def parameters(self) -> collections.OrderedDict:
-        """Names of unique parameters in the mapping"""
+        """Maps unique parameters to the names of the corresponding model parameters."""
         return self._parameters
+
+    @property
+    def theta_names(self) -> typing.Tuple[str]:
+        """Names of unique parameters in the mapping"""
+        return tuple(self.parameters.keys())
 
     @property
     def ndim(self) -> int:

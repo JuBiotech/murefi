@@ -74,6 +74,7 @@ class ParameterMapTest(unittest.TestCase):
             ('test2C', 'mue_max'),
             ('test2D', 'K_S')
             ]))
+        self.assertSequenceEqual(parmap.theta_names, tuple(parmap.parameters.keys()))
         self.assertEqual(parmap.ndim, 4)
         self.assertEqual(parmap.bounds, ((1,3), (3,4), (5,6), (7,8)))
         self.assertEqual(parmap.guesses, (0.1, 0.2, 0.3, 0.4))
