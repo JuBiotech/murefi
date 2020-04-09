@@ -79,7 +79,7 @@ class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
     def __init__(self, solver, keys_y):
         self.solver = solver
         self.keys_y = keys_y
-        return super().__init__()
+        super().__init__()
 
     def __hash__(self):
         subhashes = (

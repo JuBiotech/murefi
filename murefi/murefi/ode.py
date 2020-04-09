@@ -17,7 +17,7 @@ class BaseODEModel(object):
         """
         self.independent_keys:tuple = tuple(independent_keys)
         self.n_y:int = len(self.independent_keys)
-        return super().__init__()
+        super().__init__()
     
     @abc.abstractmethod
     def dydt(self, y, t, theta):
