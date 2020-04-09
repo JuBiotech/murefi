@@ -32,32 +32,17 @@ def _mini_model():
             dAdt = -dCdt
             dBdt = -2*dCdt
             return [dAdt, dBdt, dCdt]
-    return MiniModel(independent_keys=['A', 'B', 'C'])
-
-def _symbolic_mini_error_model(independent:str, dependent:str):
-    class SymEM(calibr8.ErrorModel):
-        def loglikelihood(self, *, y,  x, replicate_id=None, dependent_key=None, theta=None):
-            with pymc3.Model() as pmodel:
-                mu = 1
-                sigma = 0.2
-                df = 1
-                L = pymc3.StudentT(
-                  f'{replicate_id}.{dependent_key}',
-                    mu=mu,
-                    sd=sigma,
-                    nu=df,
-                    observed=y
-                )
-            return L
-    return SymEM(independent_key=independent, dependent_key=dependent)
+    return MiniModel(theta_names=['alpha', 'beta'], independent_keys=['A', 'B', 'C'])
 
 
 def _mini_error_model(independent:str, dependent:str):
-    class EM(calibr8.ErrorModel):
-        def loglikelihood(self, *, y,  x, theta=None):
-            # assume Normal with sd=1
-            return numpy.sum(stats.norm.logpdf(y-x))
-    return EM(independent_key=independent, dependent_key=dependent)
+    class EM(calibr8.BasePolynomialModelT):
+        def __init__(self):
+            super().__init__(independent_key=independent, dependent_key=dependent, mu_degree=1, scale_degree=0)
+    em = EM()
+    em.theta_fitted = [0, 1, 1, 100]
+    assert len(em.theta_fitted) == len(em.theta_names)
+    return em
 
 
 class ParameterMapTest(unittest.TestCase):
@@ -545,10 +530,10 @@ class TestSymbolicComputation(unittest.TestCase):
     def test_integration_op(self):
         model = _mini_model()
 
-        with theano.configparser.change_flags(compute_test_value='off'):    
+        with pymc3.Model() as pmodel:
             inputs = [
-                tt.scalar('beta', dtype=theano.config.floatX),
-                tt.scalar('A', dtype=theano.config.floatX)
+                pymc3.Uniform('beta', 0, 1),
+                pymc3.Uniform('A', 1, 3)
             ]
             theta = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -574,10 +559,10 @@ class TestSymbolicComputation(unittest.TestCase):
     
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_computation_graph_for_dataset(self):
-        with theano.configparser.change_flags(compute_test_value='off'):
+        with pymc3.Model() as pmodel:
             inputs = [
-                tt.scalar('beta', dtype=theano.config.floatX),
-                tt.scalar('A', dtype=theano.config.floatX)
+                pymc3.Uniform('beta', 0, 1),
+                pymc3.Uniform('A', 1, 3)
             ]
             theta = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -608,9 +593,9 @@ class TestSymbolicComputation(unittest.TestCase):
             ds_template['TestRep2'] = template2
             
             L = murefi.objectives.computation_graph_for_dataset(ds_template, model, pm, error_models=[
-                _symbolic_mini_error_model('A', 'A'),
-                _symbolic_mini_error_model('C', 'C2'),
-                _symbolic_mini_error_model('C', 'C1'),
+                    _mini_error_model('A', 'A'),
+                    _mini_error_model('C', 'C2'),
+                    _mini_error_model('C', 'C1'),
                 ],
                 theta_fit = y0 + theta
             )

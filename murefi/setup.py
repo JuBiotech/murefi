@@ -36,6 +36,6 @@ setuptools.setup(name = __packagename__,
             'scipy',
             'typing',
             'h5py',
-            'calibr8'
+            'calibr8>=4.0.2'
         ]
 )
