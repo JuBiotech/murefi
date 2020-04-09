@@ -120,6 +120,7 @@ class BaseODEModel(object):
             prediction (Dataset):       prediction result
         """
         assert not template is None, 'A template must be provided!'
+        assert theta_mapping.order == self.theta_names, 'The parameter order must be compatible with the model!'
         
         prediction = Dataset()
         theta_dict = theta_mapping.repmap(theta_fit)

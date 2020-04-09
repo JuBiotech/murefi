@@ -16,6 +16,7 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, theta_mapping: P
         theta_mapping (ParameterMapping): murefi.ParameterMapping object
         error_models: list of calibr8.ErrorModel objects
     """
+    assert theta_mapping.order == model_template.theta_names, 'The parameter order must be compatible with the model!'
     
     mappings = {
         rid : [
@@ -53,6 +54,7 @@ def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel
         error_models: list of calibr8.ErrorModel objects
         theta_fit: symbolic parameter vector
     """
+    assert theta_mapping.order == model_template.theta_names, 'The parameter order must be compatible with the model!'
     
     mappings = {
         rid : [
