@@ -103,10 +103,10 @@ class BaseODEModel(object):
             pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
         return pred
         
-    def predict_dataset(self, template:Dataset, par_map:ParameterMapping, theta_fit):
+    def predict_dataset(self, template:Dataset, theta_mapping:ParameterMapping, theta_fit):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
-            par_map (ParameterMapping): Object of the ParameterMapping class containing
+            theta_mapping (ParameterMapping): Object of the ParameterMapping class containing
                                         all parameters as dictionary, the fitting parameters 
                                         as array and their bounds as list of tuples
                                         
@@ -120,7 +120,7 @@ class BaseODEModel(object):
         assert not template is None, 'A template must be provided!'
         
         prediction = Dataset()
-        theta_dict = par_map.repmap(theta_fit)
+        theta_dict = theta_mapping.repmap(theta_fit)
 
         for rid, replicate in template.items():
             prediction[rid] = self.predict_replicate(theta_dict[rid], replicate)

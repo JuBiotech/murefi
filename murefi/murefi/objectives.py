@@ -7,13 +7,13 @@ from . datastructures import Timeseries, Replicate, Dataset
 from . ode import BaseODEModel
 
 
-def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel]):
+def for_dataset(dataset: Dataset, model_template: BaseODEModel, theta_mapping: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel]):
     """Creates an objective function for fitting a Dataset
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
         model_template (BaseODEModel): ODE model
-        par_map (ParameterMapping): murefi.ParameterMapping object
+        theta_mapping (ParameterMapping): murefi.ParameterMapping object
         error_models: list of calibr8.ErrorModel objects
     """
     
@@ -29,7 +29,7 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
     
     def negative_loglikelihood_dataset(theta_fit):
         L = 0
-        prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
+        prediction = model_template.predict_dataset(dataset, theta_mapping, theta_fit)
 
         for rid, em_ts_list in mappings.items():
             predicted_replicate = prediction[rid]
@@ -43,13 +43,13 @@ def for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: Paramet
     return negative_loglikelihood_dataset
 
 
-def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel, par_map: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel], theta_fit):
+def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel, theta_mapping: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel], theta_fit):
     """Builds the computation graph for infering parameters of a Dataset with MCMC.
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
         model_template (BaseODEModel): ODE model
-        par_map (ParameterMapping): murefi.ParameterMapping object
+        theta_mapping (ParameterMapping): murefi.ParameterMapping object
         error_models: list of calibr8.ErrorModel objects
         theta_fit: symbolic parameter vector
     """
@@ -64,7 +64,7 @@ def computation_graph_for_dataset(dataset: Dataset, model_template: BaseODEModel
         for rid, rep_obs in dataset.items()
     }
     
-    prediction = model_template.predict_dataset(dataset, par_map, theta_fit)
+    prediction = model_template.predict_dataset(dataset, theta_mapping, theta_fit)
     L = []
     for rid, em_ts_list in mappings.items():
         predicted_replicate = prediction[rid]
