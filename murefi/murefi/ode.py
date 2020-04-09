@@ -10,11 +10,13 @@ from . import symbolic
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
-    def __init__(self, independent_keys:tuple):
+    def __init__(self, theta_names:tuple, independent_keys:tuple):
         """Create a dynamic model.
         Args:
             independent_keys (iterable): formula symbols of observables
+            theta_names (iterable): names of the model parameters in the correct order
         """
+        self.theta_names = tuple(theta_names)
         self.independent_keys:tuple = tuple(independent_keys)
         self.n_y:int = len(self.independent_keys)
         super().__init__()
