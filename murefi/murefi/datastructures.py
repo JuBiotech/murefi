@@ -41,7 +41,7 @@ class Timeseries(collections.Sized):
         """
         if not isinstance(x, (tuple, list, numpy.ndarray)):
             raise DtypeError(f'Argument [x] had the wrong type.', actual=type(x), expected='tuple, list or numpy.ndarray')
-        if not isinstance(y, (tuple, list, numpy.ndarray)) or calibr8.istensor(y):
+        if not (isinstance(y, (tuple, list, numpy.ndarray)) or calibr8.istensor(y)):
             raise DtypeError(f'Argument [y] had the wrong type.', actual=type(y), expected='tuple, list, numpy.ndarray or TensorVariable')
 
         assert isinstance(independent_key, str)
