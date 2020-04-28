@@ -593,14 +593,13 @@ class TestSymbolicComputation(unittest.TestCase):
             template2['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
             ds_template['TestRep2'] = template2
             
-            L = murefi.objectives.computation_graph_for_dataset(ds_template, model, pm, error_models=[
+            objective = murefi.objectives.for_dataset(ds_template, model, pm, error_models=[
                     _mini_error_model('A', 'A'),
                     _mini_error_model('C', 'C2'),
                     _mini_error_model('C', 'C1'),
-                ],
-                theta_fit = y0 + theta
-            )
-            self.assertTrue(len(L)==5)
+            ])
+            L = objective(y0 + theta)
+            self.assertTrue(len(L) == 5)
             self.assertTrue(calibr8.istensor(L))
 
         return
