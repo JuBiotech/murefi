@@ -32,7 +32,7 @@ def _mini_model():
             dAdt = -dCdt
             dBdt = -2*dCdt
             return [dAdt, dBdt, dCdt]
-    return MiniModel(theta_names=['alpha', 'beta'], independent_keys=['A', 'B', 'C'])
+    return MiniModel(theta_names=['A0', 'B0', 'C0', 'alpha', 'beta'], independent_keys=['A', 'B', 'C'])
 
 
 def _mini_error_model(independent:str, dependent:str):
