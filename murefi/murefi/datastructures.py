@@ -4,6 +4,7 @@ import h5py
 import logging
 import numpy
 import typing
+import warnings
 
 import calibr8
 
@@ -31,27 +32,27 @@ class DtypeError(TypeError):
 
 class Timeseries(collections.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
-    def __init__(self, x, y, *, independent_key:str, dependent_key:str):
-        """Bundles [x] and [y] into a timeseries.
+    def __init__(self, t, y, *, independent_key:str, dependent_key:str):
+        """Bundles [t] and [y] into a timeseries.
 
         Args:
-            x (list or ndarray): timepoints
-            y (list of ndarray): observations (same length as x)
+            t (list or ndarray): timepoints
+            y (list of ndarray): observations (same length as t)
             independent_key (str): key of the independent variable (no . or / characters allowed)
             dependent_key (str): key of the observed timeseries (no . or / characters allowed)
         """
-        if not isinstance(x, (tuple, list, numpy.ndarray)):
-            raise DtypeError(f'Argument [x] had the wrong type.', actual=type(x), expected='tuple, list or numpy.ndarray')
+        if not isinstance(t, (tuple, list, numpy.ndarray)):
+            raise DtypeError(f'Argument [t] had the wrong type.', actual=type(t), expected='tuple, list or numpy.ndarray')
         if not (isinstance(y, (tuple, list, numpy.ndarray)) or calibr8.istensor(y)):
             raise DtypeError(f'Argument [y] had the wrong type.', actual=type(y), expected='tuple, list, numpy.ndarray or TensorVariable')
 
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
-        if not calibr8.istensor(y) and len(x) != len(y):
-            raise ShapeError(f'Arguments [x] and [y] must have the same length. ({len(x)} != {len(y)})')
-        assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
+        if not calibr8.istensor(y) and len(t) != len(y):
+            raise ShapeError(f'Arguments [t] and [y] must have the same length. ({len(t)} != {len(y)})')
+        assert numpy.array_equal(t, numpy.sort(t)), 't must be monotonically increasing.'
 
-        self.x = numpy.array(x)
+        self.t = numpy.array(t)
         self.y = numpy.array(y)  if not calibr8.istensor(y) else y   
         self.independent_key = independent_key
         self.dependent_key = dependent_key
@@ -65,7 +66,7 @@ class Timeseries(collections.Sized):
         """
         ds = grep.create_dataset(
             self.dependent_key, (2,len(self)), dtype=float,
-            data=(self.x, self.y)
+            data=(self.t, self.y)
         )
         ds.attrs['independent_key'] = self.independent_key
         ds.attrs['dependent_key'] = self.dependent_key
@@ -79,7 +80,7 @@ class Timeseries(collections.Sized):
             gts (h5py.Dataset): dataset of the timeseries
         """
         ts = Timeseries(
-            x=tsds[0,:],
+            t=tsds[0,:],
             y=tsds[1,:],
             independent_key=tsds.attrs['independent_key'],
             dependent_key=tsds.attrs['dependent_key']
@@ -87,7 +88,7 @@ class Timeseries(collections.Sized):
         return ts
 
     def __len__(self):
-        return len(self.x)
+        return len(self.t)
 
     def __str__(self):
         return f'{self.dependent_key}[:{len(self)}]'
@@ -104,25 +105,25 @@ class Replicate(collections.OrderedDict):
             rid (str or None): the unique instance ID of the replicate
         """
         self.rid = rid
-        if not hasattr(self, 'default_x_any'):
-            self.default_x_any = numpy.arange(0, 1, 0.1)
+        if not hasattr(self, 'default_t_any'):
+            self.default_t_any = numpy.arange(0, 1, 0.1)
         super().__init__()
 
     @property
-    def x_any(self) -> numpy.ndarray:
-        """Array of x-values at which any variable was observed."""
+    def t_any(self) -> numpy.ndarray:
+        """Array of time values at which any variable was observed."""
         if len(self) > 0:
             return numpy.unique(numpy.hstack([
-                ts.x
+                ts.t
                 for _, ts in self.items()
             ]))
         else:
-            return self.default_x_any
+            return self.default_t_any
 
     @property
-    def x_max(self) -> float:
+    def t_max(self) -> float:
         """The value of the last observation timepoint."""
-        return self.x_any[-1]
+        return self.t_any[-1]
 
     def __setitem__(self, key:str, value:Timeseries):
         assert isinstance(value, Timeseries)
@@ -130,32 +131,32 @@ class Replicate(collections.OrderedDict):
         return super().__setitem__(key, value)
     
     def get_observation_booleans(self, keys_y:list) -> dict:
-        """Gets the Boolean masks for observations of each y in [keys_y], relative to [x_any] and ts.x
+        """Gets the Boolean masks for observations of each y in [keys_y], relative to [t_any] and ts.x
 
         Args:
             keys_y (list): list of the timeseries keys for which indices are desired
-            x_any (array): array of timepoints that the indices shall be relative to
+            t_any (array): array of timepoints that the indices shall be relative to
         Returns:
-            dict: maps each ykey in keys_y to x_bmask (boolean mask with same size as x_any)
+            dict: maps each ykey in keys_y to t_bmask (boolean mask with same size as t_any)
         """
-        x_bmask = {}
-        x_any = self.x_any
+        t_bmask = {}
+        t_any = self.t_any
         for yi, tskey in enumerate(keys_y):
             if tskey in self:
-                x_bmask[tskey] = numpy.in1d(x_any, self[tskey].x)
+                t_bmask[tskey] = numpy.in1d(t_any, self[tskey].t)
             else:
-                x_bmask[tskey] = numpy.repeat(False, len(x_any))
-        return x_bmask
+                t_bmask[tskey] = numpy.repeat(False, len(t_any))
+        return t_bmask
 
     def get_observation_indices(self, keys_y:list) -> dict:
-        """Gets the index masks for observations of each y in [keys_y], relative to [x_any] and ts.x
+        """Gets the index masks for observations of each y in [keys_y], relative to [t_any] and ts.x
 
         Args:
             keys_y (list): list of the timeseries keys for which indices are desired
-            x_any (array): array of timepoints that the indices shall be relative to
+            t_any (array): array of timepoints that the indices shall be relative to
 
         Returns:
-            dict: maps each ykey in keys_y to x_imask (array of indices in x_any)
+            dict: maps each ykey in keys_y to x_imask (array of indices in t_any)
         """
         bmask = self.get_observation_booleans(keys_y)
         imask = {
@@ -178,10 +179,10 @@ class Replicate(collections.OrderedDict):
         Returns:
             replicate (Replicate): replicate object containing dense timeseries with random y data
         """
-        x = numpy.linspace(tmin, tmax, N)
+        t = numpy.linspace(tmin, tmax, N)
         rep = Replicate(rid)
         for yk in independent_keys:
-            rep[yk] = Timeseries(x, numpy.empty((N,)), independent_key=yk, dependent_key=yk)
+            rep[yk] = Timeseries(t, numpy.empty((N,)), independent_key=yk, dependent_key=yk)
         return rep
         
     def __str__(self):
@@ -189,8 +190,8 @@ class Replicate(collections.OrderedDict):
 
     def __repr__(self):
         return self.__str__()
-    
-    
+
+
 class Dataset(collections.OrderedDict):
     """A dataset contains one or more Replicates."""
 
@@ -237,8 +238,8 @@ class Dataset(collections.OrderedDict):
         ds = Dataset()
         for rid, rep in dataset.items():
             ds[rid] = Replicate.make_template(
-                tmin=rep.x_any[0] if tmin is None else tmin,
-                tmax=rep.x_max,
+                tmin=rep.t_any[0] if tmin is None else tmin,
+                tmax=rep.t_max,
                 independent_keys=independent_keys,
                 rid=rid, N=N
             )

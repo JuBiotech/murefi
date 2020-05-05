@@ -35,8 +35,8 @@ class BaseODEModel(object):
         """
         raise NotImplementedError()
 
-    def solver(self, y0, x, theta) -> dict:   
-        """Solves the dynamic system for all t in x.
+    def solver(self, y0, t, theta) -> dict:   
+        """Solves the dynamic system for all timepoints in t.
         Uses scipy.integrate.odeint and self.dydt to solve the system.
 
         Args:
@@ -44,13 +44,13 @@ class BaseODEModel(object):
             x (array): timepoints of the solution
             theta (array): system parameters
         Returns:
-            dictionary with keys specified when object is created and values as numpy.ndarray for all t in [x]
+            dictionary with keys specified when object is created and values as numpy.ndarray for all timepoints in [t]
         """
         # must force odeint to start simulation at t=0
-        concat_zero = x[0] != 0
+        concat_zero = t[0] != 0
         if concat_zero:
-            x = numpy.concatenate(([0], x))
-        y = scipy.integrate.odeint(self.dydt, y0, x, (theta,)) 
+            t = numpy.concatenate(([0], t))
+        y = scipy.integrate.odeint(self.dydt, y0, t, (theta,)) 
         if concat_zero:
             y = y[1:]
         y_hat_dict = {
@@ -74,10 +74,10 @@ class BaseODEModel(object):
         
         y0 = parameters[:self.n_y]
         theta = parameters[self.n_y:]
-        x = template.x_any
+        t = template.t_any
 
         if not calibr8.istensor([y0, theta]):
-            y_hat_all = self.solver(y0, x, theta)
+            y_hat_all = self.solver(y0, t, theta)
 
             # Get only those y_hat values for which data exist
             # All keys in masks corresponds to available data for observables
@@ -85,7 +85,7 @@ class BaseODEModel(object):
         
         else:
             # symbolically predict for all timepoints
-            y_hat_all = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, x, theta)
+            y_hat_all = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, theta)
             y_hat_all = {
                 ikey : y_hat_all[i]
                 for i, ikey in enumerate(self.independent_keys)
@@ -100,9 +100,9 @@ class BaseODEModel(object):
         for dependent_key, template_ts in template.items():
             independent_key = template_ts.independent_key
             mask = masks[dependent_key]
-            x_hat = template_ts.x
+            t_hat = template_ts.t
             y_hat = y_hat_all[independent_key][mask]
-            pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
+            pred[dependent_key] = Timeseries(t_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
         return pred
         
     def predict_dataset(self, template:Dataset, theta_mapping:ParameterMapping, theta_fit):

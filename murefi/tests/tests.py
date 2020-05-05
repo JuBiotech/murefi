@@ -174,9 +174,9 @@ class TestDataset(unittest.TestCase):
         self.assertIn('R1', template)
         self.assertIn('R2', template)
         self.assertIn('R3', template)
-        self.assertTrue(template['R1']['A'].x[0] == 0.5)
-        self.assertTrue(template['R2']['B'].x[-1] == 3.5)
-        self.assertTrue(len(template['R3']['C'].x) == 20)
+        self.assertTrue(template['R1']['A'].t[0] == 0.5)
+        self.assertTrue(template['R2']['B'].t[-1] == 3.5)
+        self.assertTrue(len(template['R3']['C'].t) == 20)
         return
 
     def test_make_template_like(self):
@@ -193,17 +193,17 @@ class TestDataset(unittest.TestCase):
         for ikey in 'ABC':
             assert ikey in template['A01']
             assert ikey in template['B01']
-            numpy.testing.assert_array_equal(template['A01'][ikey].x, numpy.linspace(0, 3, 20))
-            numpy.testing.assert_array_equal(template['B01'][ikey].x, numpy.linspace(2, 5, 20))
+            numpy.testing.assert_array_equal(template['A01'][ikey].t, numpy.linspace(0, 3, 20))
+            numpy.testing.assert_array_equal(template['B01'][ikey].t, numpy.linspace(2, 5, 20))
         return
 
 
 class TestReplicate(unittest.TestCase):
-    def test_x_any(self):
+    def test_t_any(self):
         rep = murefi.Replicate('A01')
         rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
         rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
-        self.assertTrue(numpy.array_equal(rep.x_any, [0,2,3,4,5,6,8,9]))
+        self.assertTrue(numpy.array_equal(rep.t_any, [0,2,3,4,5,6,8,9]))
         return
 
     def test_observation_booleans(self):
@@ -231,9 +231,9 @@ class TestReplicate(unittest.TestCase):
         self.assertIn('A', template)
         self.assertIn('B', template)
         self.assertIn('C', template)
-        self.assertTrue(template['A'].x[0] == 0.5)
-        self.assertTrue(template['A'].x[-1] == 3.5)
-        self.assertTrue(len(template['A'].x) == 20)
+        self.assertTrue(template['A'].t[0] == 0.5)
+        self.assertTrue(template['A'].t[-1] == 3.5)
+        self.assertTrue(len(template['A'].t) == 20)
         return
 
 
@@ -330,8 +330,8 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertFalse('A' in prediction['R2'])
         self.assertTrue('B' in prediction['R2'])
         self.assertTrue('C' in prediction['R2'])
-        self.assertEqual(len(prediction['R1'].x_any), 60)
-        self.assertEqual(len(prediction['R2'].x_any), 20)
+        self.assertEqual(len(prediction['R1'].t_any), 60)
+        self.assertEqual(len(prediction['R2'].t_any), 20)
         return
 
 
@@ -642,7 +642,7 @@ class TestHDF5storage(unittest.TestCase):
                 self.assertIsInstance(ts_loaded, murefi.Timeseries)
                 self.assertEqual(ts_orig.independent_key, ts_loaded.independent_key)
                 self.assertEqual(ts_orig.dependent_key, ts_loaded.dependent_key)
-                numpy.testing.assert_array_equal(ts_orig.x, ts_loaded.x)
+                numpy.testing.assert_array_equal(ts_orig.t, ts_loaded.t)
                 numpy.testing.assert_array_equal(ts_orig.y, ts_loaded.y)
         return
 
