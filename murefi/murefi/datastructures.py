@@ -3,6 +3,7 @@ import collections
 import h5py
 import logging
 import numpy
+import typing
 
 import calibr8
 
@@ -219,6 +220,29 @@ class Dataset(collections.OrderedDict):
         for rid in rids:
             ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, rid=rid, N=N)
         return ds
+
+    @staticmethod
+    def make_template_like(dataset, independent_keys:typing.Iterable[str], *, N:int=200, tmin:typing.Optional[float]=None):
+        """Create a dense template Dataset that has the same start and end times as another Dataset.
+
+        Args:
+            dataset (murefi.Dataset): a template dataset (typically with real observations)
+            independent_keys (list): list of independent variable keys to include in the template
+            N (int): total number of timepoints (default: 200)
+            tmin (float, optional): override for the start time (when tmin=None, the first timepoint of the template replicate is used)
+        
+        Returns:
+            dataset (Dataset): dataset object containing Replicates with dense timeseries of random y data
+        """
+        return {
+            rid : Replicate.make_template(
+                tmin=rep.x_any[0] if tmin is None else tmin,
+                tmax=rep.x_max,
+                independent_keys=independent_keys,
+                rid=rid, N=N
+            )
+            for rid, rep in dataset.items()
+        }
 
     def save(self, filepath:str):
         """Saves the Dataset to a HDF5 file.

@@ -179,6 +179,24 @@ class TestDataset(unittest.TestCase):
         self.assertTrue(len(template['R3']['C'].x) == 20)
         return
 
+    def test_make_template_like(self):
+        ds = murefi.Dataset()
+        ds['A01'] = murefi.Replicate('A01')
+        ds['A01']['A_obs'] = murefi.Timeseries([0,2,3], [0.2,0.4,0.1], independent_key='A', dependent_key='A_obs')
+        ds['B01'] = murefi.Replicate('B01')
+        ds['B01']['B_obs'] = murefi.Timeseries([2,3,5], [0.2,0.4,0.1], independent_key='B', dependent_key='B_obs')
+
+        template = murefi.Dataset.make_template_like(ds, independent_keys=['A', 'B', 'C'], N=20)
+        assert 'A01' in template
+        assert 'B01' in template
+        for ikey in 'ABC':
+            assert ikey in template['A01']
+            assert ikey in template['B01']
+            numpy.testing.assert_array_equal(template['A01'][ikey].x, numpy.linspace(0, 3, 20))
+            numpy.testing.assert_array_equal(template['B01'][ikey].x, numpy.linspace(2, 5, 20))
+        return
+
+
 class TestReplicate(unittest.TestCase):
     def test_x_any(self):
         rep = murefi.Replicate('A01')
