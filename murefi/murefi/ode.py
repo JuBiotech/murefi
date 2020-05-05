@@ -10,14 +10,16 @@ from . import symbolic
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
-    def __init__(self, independent_keys:tuple):
+    def __init__(self, theta_names:tuple, independent_keys:tuple):
         """Create a dynamic model.
         Args:
             independent_keys (iterable): formula symbols of observables
+            theta_names (iterable): names of the model parameters in the correct order
         """
+        self.theta_names = tuple(theta_names)
         self.independent_keys:tuple = tuple(independent_keys)
         self.n_y:int = len(self.independent_keys)
-        return super().__init__()
+        super().__init__()
     
     @abc.abstractmethod
     def dydt(self, y, t, theta):
@@ -103,10 +105,10 @@ class BaseODEModel(object):
             pred[dependent_key] = Timeseries(x_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
         return pred
         
-    def predict_dataset(self, template:Dataset, par_map:ParameterMapping, theta_fit):
+    def predict_dataset(self, template:Dataset, theta_mapping:ParameterMapping, theta_fit):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
-            par_map (ParameterMapping): Object of the ParameterMapping class containing
+            theta_mapping (ParameterMapping): Object of the ParameterMapping class containing
                                         all parameters as dictionary, the fitting parameters 
                                         as array and their bounds as list of tuples
                                         
@@ -118,9 +120,10 @@ class BaseODEModel(object):
             prediction (Dataset):       prediction result
         """
         assert not template is None, 'A template must be provided!'
+        assert theta_mapping.order == self.theta_names, 'The parameter order must be compatible with the model!'
         
         prediction = Dataset()
-        theta_dict = par_map.repmap(theta_fit)
+        theta_dict = theta_mapping.repmap(theta_fit)
 
         for rid, replicate in template.items():
             prediction[rid] = self.predict_replicate(theta_dict[rid], replicate)

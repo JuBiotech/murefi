@@ -3,11 +3,30 @@ import collections
 import h5py
 import logging
 import numpy
+import typing
 
 import calibr8
 
 
 logger = logging.getLogger(__name__)
+
+
+class ShapeError(Exception):
+    """Error that the shape of a variable is incorrect."""
+    def __init__(self, message, actual=None, expected=None):
+        if expected and actual:
+            super().__init__('{} (actual {} != expected {})'.format(message, actual, expected))
+        else:
+            super().__init__(message)
+
+
+class DtypeError(TypeError):
+    """Error that the dtype of a variable is incorrect."""
+    def __init__(self, message, actual=None, expected=None):
+        if expected and actual:
+            super().__init__('{} (actual {} != expected {})'.format(message, actual, expected))
+        else:
+            super().__init__(message)
 
 
 class Timeseries(collections.Sized):
@@ -21,19 +40,22 @@ class Timeseries(collections.Sized):
             independent_key (str): key of the independent variable (no . or / characters allowed)
             dependent_key (str): key of the observed timeseries (no . or / characters allowed)
         """
-        assert isinstance(x, (list, numpy.ndarray))
-        assert (isinstance(y, (list, numpy.ndarray)) or calibr8.istensor(y))
+        if not isinstance(x, (tuple, list, numpy.ndarray)):
+            raise DtypeError(f'Argument [x] had the wrong type.', actual=type(x), expected='tuple, list or numpy.ndarray')
+        if not (isinstance(y, (tuple, list, numpy.ndarray)) or calibr8.istensor(y)):
+            raise DtypeError(f'Argument [y] had the wrong type.', actual=type(y), expected='tuple, list, numpy.ndarray or TensorVariable')
+
         assert isinstance(independent_key, str)
         assert isinstance(dependent_key, str)
-        if not calibr8.istensor(y):
-            assert len(x) == len(y), 'x and y must have the same length.'
+        if not calibr8.istensor(y) and len(x) != len(y):
+            raise ShapeError(f'Arguments [x] and [y] must have the same length. ({len(x)} != {len(y)})')
         assert numpy.array_equal(x, numpy.sort(x)), 'x must be monotonically increasing.'
 
         self.x = numpy.array(x)
         self.y = numpy.array(y)  if not calibr8.istensor(y) else y   
         self.independent_key = independent_key
         self.dependent_key = dependent_key
-        return super().__init__()
+        super().__init__()
 
     def _to_dataset(self, grep:h5py.Group):
         """Store the Timeseries to a h5py.Dataset within the provided group.
@@ -84,10 +106,10 @@ class Replicate(collections.OrderedDict):
         self.rid = rid
         if not hasattr(self, 'default_x_any'):
             self.default_x_any = numpy.arange(0, 1, 0.1)
-        return super().__init__()
+        super().__init__()
 
     @property
-    def x_any(self):
+    def x_any(self) -> numpy.ndarray:
         """Array of x-values at which any variable was observed."""
         if len(self) > 0:
             return numpy.unique(numpy.hstack([
@@ -98,7 +120,7 @@ class Replicate(collections.OrderedDict):
             return self.default_x_any
 
     @property
-    def x_max(self):
+    def x_max(self) -> float:
         """The value of the last observation timepoint."""
         return self.x_any[-1]
 
@@ -171,7 +193,6 @@ class Replicate(collections.OrderedDict):
     
 class Dataset(collections.OrderedDict):
     """A dataset contains one or more Replicates."""
-    __metaclass__ = abc.ABCMeta
 
     def __setitem__(self, key:str, value:Replicate):
         assert isinstance(value, Replicate)
@@ -198,6 +219,29 @@ class Dataset(collections.OrderedDict):
         ds = Dataset()
         for rid in rids:
             ds[rid] = Replicate.make_template(tmin, tmax, independent_keys, rid=rid, N=N)
+        return ds
+
+    @staticmethod
+    def make_template_like(dataset, independent_keys:typing.Iterable[str], *, N:int=200, tmin:typing.Optional[float]=None):
+        """Create a dense template Dataset that has the same start and end times as another Dataset.
+
+        Args:
+            dataset (murefi.Dataset): a template dataset (typically with real observations)
+            independent_keys (list): list of independent variable keys to include in the template
+            N (int): total number of timepoints (default: 200)
+            tmin (float, optional): override for the start time (when tmin=None, the first timepoint of the template replicate is used)
+        
+        Returns:
+            dataset (Dataset): dataset object containing Replicates with dense timeseries of random y data
+        """
+        ds = Dataset()
+        for rid, rep in dataset.items():
+            ds[rid] = Replicate.make_template(
+                tmin=rep.x_any[0] if tmin is None else tmin,
+                tmax=rep.x_max,
+                independent_keys=independent_keys,
+                rid=rid, N=N
+            )
         return ds
 
     def save(self, filepath:str):

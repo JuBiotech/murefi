@@ -5,7 +5,7 @@ class MonodModel(BaseODEModel):
     """ Class specifying the model for parameter fitting as Monod kinetics. """
 
     def __init__(self):
-        super().__init__(independent_keys=['S', 'X'])
+        super().__init__(theta_names=('S0', 'X0', 'mu_max', 'K_S', 'Y_XS'), independent_keys=['S', 'X'])
 
     def dydt(self, y, t, theta):
         """First derivative of the transient variables.

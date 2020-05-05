@@ -32,32 +32,17 @@ def _mini_model():
             dAdt = -dCdt
             dBdt = -2*dCdt
             return [dAdt, dBdt, dCdt]
-    return MiniModel(independent_keys=['A', 'B', 'C'])
-
-def _symbolic_mini_error_model(independent:str, dependent:str):
-    class SymEM(calibr8.ErrorModel):
-        def loglikelihood(self, *, y,  x, replicate_id=None, dependent_key=None, theta=None):
-            with pymc3.Model() as pmodel:
-                mu = 1
-                sigma = 0.2
-                df = 1
-                L = pymc3.StudentT(
-                  f'{replicate_id}.{dependent_key}',
-                    mu=mu,
-                    sd=sigma,
-                    nu=df,
-                    observed=y
-                )
-            return L
-    return SymEM(independent_key=independent, dependent_key=dependent)
+    return MiniModel(theta_names=['A0', 'B0', 'C0', 'alpha', 'beta'], independent_keys=['A', 'B', 'C'])
 
 
 def _mini_error_model(independent:str, dependent:str):
-    class EM(calibr8.ErrorModel):
-        def loglikelihood(self, *, y,  x, theta=None):
-            # assume Normal with sd=1
-            return numpy.sum(stats.norm.logpdf(y-x))
-    return EM(independent_key=independent, dependent_key=dependent)
+    class EM(calibr8.BasePolynomialModelT):
+        def __init__(self):
+            super().__init__(independent_key=independent, dependent_key=dependent, mu_degree=1, scale_degree=0)
+    em = EM()
+    em.theta_fitted = [0, 1, 1, 100]
+    assert len(em.theta_fitted) == len(em.theta_names)
+    return em
 
 
 class ParameterMapTest(unittest.TestCase):
@@ -89,6 +74,7 @@ class ParameterMapTest(unittest.TestCase):
             ('test2C', 'mue_max'),
             ('test2D', 'K_S')
             ]))
+        self.assertSequenceEqual(parmap.theta_names, tuple(parmap.parameters.keys()))
         self.assertEqual(parmap.ndim, 4)
         self.assertEqual(parmap.bounds, ((1,3), (3,4), (5,6), (7,8)))
         self.assertEqual(parmap.guesses, (0.1, 0.2, 0.3, 0.4))
@@ -192,6 +178,25 @@ class TestDataset(unittest.TestCase):
         self.assertTrue(template['R2']['B'].x[-1] == 3.5)
         self.assertTrue(len(template['R3']['C'].x) == 20)
         return
+
+    def test_make_template_like(self):
+        ds = murefi.Dataset()
+        ds['A01'] = murefi.Replicate('A01')
+        ds['A01']['A_obs'] = murefi.Timeseries([0,2,3], [0.2,0.4,0.1], independent_key='A', dependent_key='A_obs')
+        ds['B01'] = murefi.Replicate('B01')
+        ds['B01']['B_obs'] = murefi.Timeseries([2,3,5], [0.2,0.4,0.1], independent_key='B', dependent_key='B_obs')
+
+        template = murefi.Dataset.make_template_like(ds, independent_keys=['A', 'B', 'C'], N=20)
+        assert isinstance(template, murefi.Dataset)
+        assert 'A01' in template
+        assert 'B01' in template
+        for ikey in 'ABC':
+            assert ikey in template['A01']
+            assert ikey in template['B01']
+            numpy.testing.assert_array_equal(template['A01'][ikey].x, numpy.linspace(0, 3, 20))
+            numpy.testing.assert_array_equal(template['B01'][ikey].x, numpy.linspace(2, 5, 20))
+        return
+
 
 class TestReplicate(unittest.TestCase):
     def test_x_any(self):
@@ -314,7 +319,7 @@ class TestBaseODEModel(unittest.TestCase):
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
         self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
-        prediction = model.predict_dataset(template=dataset, par_map=pm, theta_fit=theta)
+        prediction = model.predict_dataset(template=dataset, theta_mapping=pm, theta_fit=theta)
 
         self.assertIsInstance(prediction, murefi.Dataset)
         self.assertIn('R1', prediction)
@@ -545,10 +550,10 @@ class TestSymbolicComputation(unittest.TestCase):
     def test_integration_op(self):
         model = _mini_model()
 
-        with theano.configparser.change_flags(compute_test_value='off'):    
+        with pymc3.Model() as pmodel:
             inputs = [
-                tt.scalar('beta', dtype=theano.config.floatX),
-                tt.scalar('A', dtype=theano.config.floatX)
+                pymc3.Uniform('beta', 0, 1),
+                pymc3.Uniform('A', 1, 3)
             ]
             theta = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -574,10 +579,10 @@ class TestSymbolicComputation(unittest.TestCase):
     
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_computation_graph_for_dataset(self):
-        with theano.configparser.change_flags(compute_test_value='off'):
+        with pymc3.Model() as pmodel:
             inputs = [
-                tt.scalar('beta', dtype=theano.config.floatX),
-                tt.scalar('A', dtype=theano.config.floatX)
+                pymc3.Uniform('beta', 0, 1),
+                pymc3.Uniform('A', 1, 3)
             ]
             theta = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -607,14 +612,13 @@ class TestSymbolicComputation(unittest.TestCase):
             template2['C1'] = murefi.Timeseries(x[2:4], [0]*2, independent_key='C', dependent_key='C1')
             ds_template['TestRep2'] = template2
             
-            L = murefi.objectives.computation_graph_for_dataset(ds_template, model, pm, error_models=[
-                _symbolic_mini_error_model('A', 'A'),
-                _symbolic_mini_error_model('C', 'C2'),
-                _symbolic_mini_error_model('C', 'C1'),
-                ],
-                theta_fit = y0 + theta
-            )
-            self.assertTrue(len(L)==5)
+            objective = murefi.objectives.for_dataset(ds_template, model, pm, error_models=[
+                    _mini_error_model('A', 'A'),
+                    _mini_error_model('C', 'C2'),
+                    _mini_error_model('C', 'C1'),
+            ])
+            L = objective(y0 + theta)
+            self.assertTrue(len(L) == 5)
             self.assertTrue(calibr8.istensor(L))
 
         return
