@@ -89,15 +89,15 @@ class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
         )
         return hash(subhashes)
 
-    def make_node(self, y0:list, x, theta:list):
+    def make_node(self, y0:list, t, theta:list):
         # NOTE: theano does not allow a list of tensors to be one of the inputs
         #       that's why they have to be theano.tensor.stack()ed which also merges them into one dtype!
         # TODO: check dtypes and raise warnings
         y0 = theano.tensor.stack([theano.tensor.as_tensor_variable(y) for y in y0])
-        theta = theano.tensor.stack([theano.tensor.as_tensor_variable(t) for t in theta])
-        x = theano.tensor.as_tensor_variable(x)
+        theta = theano.tensor.stack([theano.tensor.as_tensor_variable(var) for var in theta])
+        t = theano.tensor.as_tensor_variable(t)
         apply_node = theano.Apply(self,
-                            [y0, x, theta],     # symbolic inputs: y0 and theta
+                            [y0, t, theta],     # symbolic inputs: y0 and theta
                             [theano.tensor.dmatrix()])     # symbolic outputs: Y_hat
         # NOTE: to support multiple different dtypes as transient variables, the
         #       output type would have to be a list of dvector/svectors.
@@ -105,9 +105,9 @@ class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
 
     def perform(self, node, inputs, output_storage):
         # this performs the actual simulation using the provided solver
-        # which takes actual y0/x/theta values and returns a matrix
-        y0, x, theta = inputs
-        Y_hat = self.solver(y0, x, theta)       # solve for all x
+        # which takes actual y0/t/theta values and returns a matrix
+        y0, t, theta = inputs
+        Y_hat = self.solver(y0, t, theta)       # solve for all x
         output_storage[0][0] = numpy.stack([
             Y_hat[ykey]
             for iy, ykey in enumerate(self.keys_y)
