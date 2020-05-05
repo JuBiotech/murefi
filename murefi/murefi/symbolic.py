@@ -94,7 +94,7 @@ class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
         #       that's why they have to be theano.tensor.stack()ed which also merges them into one dtype!
         # TODO: check dtypes and raise warnings
         y0 = theano.tensor.stack([theano.tensor.as_tensor_variable(y) for y in y0])
-        theta = theano.tensor.stack([theano.tensor.as_tensor_variable(t_) for t_ in theta])
+        theta = theano.tensor.stack([theano.tensor.as_tensor_variable(var) for var in theta])
         t = theano.tensor.as_tensor_variable(t)
         apply_node = theano.Apply(self,
                             [y0, t, theta],     # symbolic inputs: y0 and theta

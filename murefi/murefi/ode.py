@@ -41,7 +41,7 @@ class BaseODEModel(object):
 
         Args:
             y0 (array): initial state
-            x (array): timepoints of the solution
+            t (array): timepoints of the solution
             theta (array): system parameters
         Returns:
             dictionary with keys specified when object is created and values as numpy.ndarray for all timepoints in [t]
