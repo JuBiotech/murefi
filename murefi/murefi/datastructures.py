@@ -234,15 +234,15 @@ class Dataset(collections.OrderedDict):
         Returns:
             dataset (Dataset): dataset object containing Replicates with dense timeseries of random y data
         """
-        return {
-            rid : Replicate.make_template(
+        ds = Dataset()
+        for rid, rep in dataset.items():
+            ds[rid] = Replicate.make_template(
                 tmin=rep.x_any[0] if tmin is None else tmin,
                 tmax=rep.x_max,
                 independent_keys=independent_keys,
                 rid=rid, N=N
             )
-            for rid, rep in dataset.items()
-        }
+        return ds
 
     def save(self, filepath:str):
         """Saves the Dataset to a HDF5 file.

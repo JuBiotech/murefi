@@ -187,6 +187,7 @@ class TestDataset(unittest.TestCase):
         ds['B01']['B_obs'] = murefi.Timeseries([2,3,5], [0.2,0.4,0.1], independent_key='B', dependent_key='B_obs')
 
         template = murefi.Dataset.make_template_like(ds, independent_keys=['A', 'B', 'C'], N=20)
+        assert isinstance(template, murefi.Dataset)
         assert 'A01' in template
         assert 'B01' in template
         for ikey in 'ABC':
