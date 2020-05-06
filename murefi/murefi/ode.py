@@ -110,71 +110,121 @@ class BaseODEModel(object):
         }
         return y_hat_dict
     
-    def predict_replicate(self, parameters, template:Replicate) -> Replicate:
-        """Simulates an experiment that is comparable to the Replicate template with support for symbolically prediction.
+    def predict_replicate(self, parameters:typing.Sequence, template:Replicate) -> Replicate:
+        """Simulates an experiment that is comparable to the Replicate template.
+        Supports symbolic prediction and vectorized prediction from a matrix of parameters.
 
         Args:
-            parameters (array or tt.TensorVariable ): concatenation of y0 and theta parameters or 1D Tensor of the same
-            template (Replicate): template that the prediction will be comparable with
+            parameters (array-like):
+                The [parameters] sequence must be a tuple, list or numpy.ndarray, with the elements 
+                being a concatenation of y0 and theta parameters.
+
+                Symbolic prediction requires a (n_parameters,) parameter vector of type {tuple, list, numpy.ndarray}.
+                Elements may be a mix of scalars and Theano tensor variables.
+
+                Prediction of distributions requires a (n_parameters,) parameter vector of type {tuple, list, numpy.ndarray}.
+                Elements may be a mix of scalars and vectors, as long as all vectors have the same length.
+            template (Replicate):
+                template that the prediction will be comparable with
 
         Returns:
-            pred (Replicate): prediction result or symbolic predicted template (contains Timeseries with symbolic y-Tensors)
+            pred (Replicate): prediction result (contains Timeseries with y being numpy.arrays or Tensors)
         """
-        assert not template is None, 'A template must be provided!'
-        
+        # check inputs (basic)
+        if not isinstance(template, Replicate):
+            raise ValueError('A template Replicate must be provided!')
+        if not isinstance(parameters, (tuple, list, numpy.ndarray)):
+            raise DtypeError('The provided [parameters] have the wrong type.', actual=type(parameters), expected='list, tuple or numpy.ndarray')
+        P = len(parameters)
+        if P != self.n_parameters:
+            raise ShapeError('Invalid number of parameters.', actual=P, expected=self.n_parameters)
+
+        # check that all parameters are either scalar, or (S,) vectors
+        S = None
+        symbolic_mode = calibr8.istensor(parameters)
+        for pname, pval in zip(self.theta_names, parameters):
+            pdim = numpy.ndim(pval)
+            pshape = numpy.shape(pval)
+            if pdim == 1:
+                if S is not None and pshape[0] != S:
+                    raise ShapeError(f'Lenght of parameter values for {pname} is inconsistent with other parameters.')
+                S = pshape[0]
+            elif pdim > 1:
+                raise ShapeError(
+                    f'Entry for "{pname}" entry is more than 1-dimensional.',
+                    actual=pshape,
+                    expected='() or (?,)' if S is None else f'() or ({S},)'
+                )
+        if symbolic_mode and S is not None:
+            raise ValueError(
+                'Symbolic prediction and numeric prediction of distributions are incompatible with each other. '
+                'The [parameters] contained Tensors and vector-valued entries at the same time.'
+            )
+
+        # if any parameter entry is a vector, all must be vectors
+        if S is not None:
+            parameters = tuple(
+                numpy.repeat(pars, S) if numpy.ndim(pars) == 0 else numpy.array(pars)
+                for pars in parameters
+            )
+
+        # at this point, `parameters` is a tuple of either (symbolic) scalars, or (S,) vectors
+        # and ready for prediction!
+
+        # predictions are made for all timepoints and sliced to match the template
+        t = template.t_any
         y0 = parameters[:self.n_y]
         theta = parameters[self.n_y:]
-        t = template.t_any
-
-        if not calibr8.istensor([y0, theta]):
-            y_hat_all = self.solver(y0, t, theta)
-
-            # Get only those y_hat values for which data exist
-            # All keys in masks corresponds to available data for observables
-            masks = template.get_observation_booleans(list(template.keys()))
-        
-        else:
-            # symbolically predict for all timepoints
-            y_hat_all = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, theta)
-            y_hat_all = {
-                ikey : y_hat_all[i]
-                for i, ikey in enumerate(self.independent_keys)
-            }
-        
-            # mask the prediction
+        y_hat_all = {}
+        if symbolic_mode:
             masks = template.get_observation_indices(list(template.keys()))
+            # symbolically predict for all timepoints
+            y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, theta)
+            # and put the symbolic predictions into y_hat_all
+            for i, ikey in enumerate(self.independent_keys):
+                y_hat_all[ikey] = y_hat_tensor[i]
+        else:
+            masks = template.get_observation_booleans(list(template.keys()))
+            if S is None:
+                # non-vectorized returns dict of (T,)
+                y_hat_all = self.solver(y0, t, theta)
+            else:
+                # vectorized returns dict of (T, S)
+                y_hat_all = self.solver_vectorized(y0, t, theta)
 
-        # Slice prediction into x_hat and y_hat 
-        # Create Timeseries objects which are fed to a new Replicate object pred
+        # Create Timeseries objects from sliced 1D or 2D predictions
         pred = Replicate(template.rid)
         for dependent_key, template_ts in template.items():
             independent_key = template_ts.independent_key
             mask = masks[dependent_key]
-            t_hat = template_ts.t
-            y_hat = y_hat_all[independent_key][mask]
-            pred[dependent_key] = Timeseries(t_hat, y_hat, independent_key=independent_key, dependent_key=dependent_key)
+            pred[dependent_key] = Timeseries(
+                t=template_ts.t,
+                y=y_hat_all[independent_key][mask,...].T,
+                independent_key=independent_key,
+                dependent_key=dependent_key
+            )
         return pred
         
-    def predict_dataset(self, template:Dataset, theta_mapping:ParameterMapping, theta_fit):
+    def predict_dataset(self, template:Dataset, theta_mapping:ParameterMapping, parameters:typing.Union[typing.Sequence, dict]):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
-            theta_mapping (ParameterMapping): Object of the ParameterMapping class containing
-                                        all parameters as dictionary, the fitting parameters 
-                                        as array and their bounds as list of tuples
-                                        
-            template (Dataset):         template that the prediction will be comparable with
-            
-            theta_fit:                  array with fitting parameters
-        
+            theta_mapping (ParameterMapping):
+                maps elements in [theta] to replicates in the [template]
+            template (Dataset):
+                template that the prediction will be comparable with
+            parameters (array-like):
+                prediction parameters, can be symbolic
+
         Returns:
-            prediction (Dataset):       prediction result
+            prediction (Dataset): prediction result
         """
         assert not template is None, 'A template must be provided!'
-        assert theta_mapping.order == self.theta_names, 'The parameter order must be compatible with the model!'
+        if not theta_mapping.order == self.theta_names:
+            raise ValueError('The parameter order must be compatible with the model!')
         
         prediction = Dataset()
-        theta_dict = theta_mapping.repmap(theta_fit)
+        theta_mapped = theta_mapping.repmap(parameters)
 
         for rid, replicate in template.items():
-            prediction[rid] = self.predict_replicate(theta_dict[rid], replicate)
+            prediction[rid] = self.predict_replicate(theta_mapped[rid], replicate)
         return prediction

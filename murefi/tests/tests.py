@@ -474,7 +474,45 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertTrue(numpy.allclose(prediction['A'].y, [2.0, 1.4819299, 1.28322046]))
         self.assertTrue(numpy.allclose(prediction['C1'].y, [0.71677954, 0.83004323]))
         self.assertTrue(numpy.allclose(prediction['C2'].y, [0.5180701, 0.71677954, 0.83004323]))
-        return
+        pass
+
+    def test_predict_replicate_distribution(self):
+        t = numpy.linspace(0, 1, 5)
+        model = _mini_model()
+        template = murefi.Replicate('TestRep')
+        # one observation of A, two observations of C
+        template['A'] = murefi.Timeseries(t[:3], [0]*3, independent_key='A', dependent_key='A')
+        template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
+
+        P = len(model.theta_names)
+        S = 300
+        pred = model.predict_replicate(template=template, parameters=numpy.ones((P, S)))
+        for dkey, ts_pred in pred.items():
+            ts_template = template[dkey]
+            numpy.testing.assert_array_equal(ts_pred.t, ts_template.t)
+            assert numpy.shape(ts_pred.y) == (S, len(ts_template))
+        pass
+
+    def test_predict_replicate_inputchecks(self):
+        t = numpy.linspace(0, 1, 5)
+        model = _mini_model()
+        template = murefi.Replicate('TestRep')
+        # one observation of A, two observations of C
+        template['A'] = murefi.Timeseries(t[:3], [0]*3, independent_key='A', dependent_key='A')
+        template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
+
+        P = len(model.theta_names)
+
+        # wrong parameter shapes
+        with self.assertRaises(murefi.ShapeError):
+            # wrong number of parameters
+            model.predict_replicate(template=template, parameters=numpy.ones((P+2,)))
+        with self.assertRaises(murefi.ShapeError):
+            # 3D parameters
+            model.predict_replicate(template=template, parameters=numpy.ones((P, 300, 1)))
+        pass
 
     def test_predict_dataset(self):
         model = _mini_model()
@@ -496,7 +534,7 @@ class TestBaseODEModel(unittest.TestCase):
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
         self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
-        prediction = model.predict_dataset(template=dataset, theta_mapping=pm, theta_fit=theta)
+        prediction = model.predict_dataset(template=dataset, theta_mapping=pm, parameters=theta)
 
         self.assertIsInstance(prediction, murefi.Dataset)
         self.assertIn('R1', prediction)
@@ -510,6 +548,48 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertEqual(len(prediction['R1'].t_any), 60)
         self.assertEqual(len(prediction['R2'].t_any), 20)
         return
+
+    def test_predict_dataset_distribution(self):
+        model = _mini_model()
+        
+        # create a template dataset
+        dataset = murefi.Dataset()
+        dataset['R1'] = murefi.Replicate.make_template(0, 1, 'AB', N=60, rid='R1')
+        dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
+
+        # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
+        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
+        mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
+        mapping = mapping.reset_index()
+        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        self.assertEqual(pm.ndim, 6)
+
+        # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
+        self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
+        theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
+        # randomize the parameter vector into a matrix
+        P = len(theta)
+        S = 40
+        theta = numpy.array(theta)[:,numpy.newaxis] + numpy.random.uniform(0, 0.1, size=(P, S))
+        assert theta.shape == (P, S)
+
+        prediction = model.predict_dataset(template=dataset, theta_mapping=pm, parameters=theta)
+        self.assertIsInstance(prediction, murefi.Dataset)
+        self.assertIn('R1', prediction)
+        self.assertIn('R2', prediction)
+        self.assertTrue('A' in prediction['R1'])
+        self.assertTrue('B' in prediction['R1'])
+        self.assertFalse('C' in prediction['R1'])
+        self.assertFalse('A' in prediction['R2'])
+        self.assertTrue('B' in prediction['R2'])
+        self.assertTrue('C' in prediction['R2'])
+        self.assertEqual(len(prediction['R1'].t_any), 60)
+        self.assertEqual(len(prediction['R2'].t_any), 20)
+        for rid, rep in prediction.items():
+            for dkey, ts in rep.items():
+                assert numpy.shape(ts.y) == (S, len(dataset[rid][dkey]))
+        pass
 
     def test_attributes(self):
         monod = murefi.MonodModel()
@@ -692,7 +772,7 @@ class TestSymbolicComputation(unittest.TestCase):
             ds_template['TestRep'] = template
 
             # construct the symbolic computation graph
-            prediction = model.predict_dataset(ds_template, pm, theta_fit = y0 + theta)
+            prediction = model.predict_dataset(ds_template, pm, parameters = y0 + theta)
 
             self.assertIsInstance(prediction, murefi.Dataset)
             self.assertIn('A', prediction['TestRep'])
