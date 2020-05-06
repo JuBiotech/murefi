@@ -402,7 +402,8 @@ class TestBaseODEModel(unittest.TestCase):
     def test_solver(self):
         theta = [0.23, 0.85]
         y0 = [2., 2., 0.]
-        t = numpy.linspace(0, 1, 5)
+        T = 5
+        t = numpy.linspace(0, 1, T)
         model = _mini_model()      
 
         y_hat = model.solver(y0, t, theta)
@@ -410,6 +411,9 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertIn('A', y_hat)
         self.assertIn('B', y_hat)
         self.assertIn('C', y_hat)
+        for ikey in model.independent_keys:
+            assert isinstance(y_hat[ikey], numpy.ndarray)
+            assert y_hat[ikey].shape == (T,)
         self.assertTrue(numpy.allclose(y_hat['A'], [2.0, 1.4819299, 1.28322046, 1.16995677, 1.09060199]))
         self.assertTrue(numpy.allclose(y_hat['B'], [2.0, 0.9638598, 0.56644092, 0.33991354, 0.18120399]))
         self.assertTrue(numpy.allclose(y_hat['C'], [0.0, 0.5180701, 0.71677954, 0.83004323, 0.90939801]))
@@ -426,6 +430,26 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertTrue(numpy.allclose(y_hat['B'], [0.9638598, 0.56644092, 0.33991354, 0.18120399]))
         self.assertTrue(numpy.allclose(y_hat['C'], [0.5180701, 0.71677954, 0.83004323, 0.90939801]))
         return
+
+    def test_solver_vectorized(self):
+        S = 300
+        T = 25
+
+        model = _mini_model()      
+        y0 = numpy.array([[2., 2., 0.]] * S).T
+        theta = numpy.array([[0.23, 0.85]] * S).T
+        t = numpy.linspace(0.2, 2, T)
+        assert y0.shape == (3, S)
+        assert theta.shape == (2, S)
+        assert t.shape == (T,)
+
+        y_hat = model.solver_vectorized(y0, t, theta)
+        assert isinstance(y_hat, dict)
+        for ikey in model.independent_keys:
+            assert ikey in y_hat
+            assert isinstance(y_hat[ikey], numpy.ndarray)
+            assert y_hat[ikey].shape == (T, S)
+        pass
 
     def test_predict_replicate(self):
         theta = [0.23, 0.85]
@@ -487,8 +511,6 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertEqual(len(prediction['R2'].t_any), 20)
         return
 
-
-class TestBaseODEModel(unittest.TestCase):
     def test_attributes(self):
         monod = murefi.MonodModel()
         self.assertIsInstance(monod, murefi.BaseODEModel)

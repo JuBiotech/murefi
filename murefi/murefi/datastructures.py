@@ -116,7 +116,7 @@ class Timeseries(collections.Sized):
 
     def __repr__(self):
         return self.__str__()
-    
+
 
 class Replicate(collections.OrderedDict):
     """A replicate contains one or more timeseries."""
