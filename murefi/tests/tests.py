@@ -1,4 +1,5 @@
 import collections
+import h5py
 import unittest
 import numpy
 import pandas
@@ -235,6 +236,120 @@ class TestReplicate(unittest.TestCase):
         self.assertTrue(template['A'].t[-1] == 3.5)
         self.assertTrue(len(template['A'].t) == 20)
         return
+
+
+class TestTimeseries(unittest.TestCase):
+    def test_t_monotonic(self):
+        with self.assertRaises(ValueError):
+            murefi.Timeseries([1,2,0,4], [1,2,3,4], independent_key='A', dependent_key='A_obs')
+        pass
+
+    def test_y_1d(self):
+        N = 45
+        t = numpy.linspace(0, 60, N)
+        y = numpy.random.normal(t)
+        assert t.shape == (N,)
+        assert y.shape == (N,)
+
+        ts = murefi.Timeseries(t, y, independent_key='T', dependent_key='T_obs')
+        numpy.testing.assert_array_equal(ts.t, t)
+        numpy.testing.assert_array_equal(ts.y, y)
+        assert ts.independent_key == 'T'
+        assert ts.dependent_key == 'T_obs'
+        assert not ts.is_distribution
+
+        with self.assertRaises(murefi.ShapeError):
+            murefi.Timeseries([1,2,3], [1,2,3,4], independent_key='T', dependent_key='T_obs')
+        pass
+
+    def test_y_2d(self):
+        N = 45
+        S = 500
+        t = numpy.linspace(0, 60, N)
+        y = numpy.random.normal(t, size=(S, N))
+        assert t.shape == (N,)
+        assert y.shape == (S, N)
+
+        ts = murefi.Timeseries(t, y, independent_key='T', dependent_key='T_obs')
+        assert ts.is_distribution
+        numpy.testing.assert_array_equal(ts.t, t)
+        numpy.testing.assert_array_equal(ts.y, y)
+        assert ts.independent_key == 'T'
+        assert ts.dependent_key == 'T_obs'
+
+        ts = murefi.Timeseries(
+            [1,2,3],
+            [[4,5,6]]*5,
+            independent_key='T',
+            dependent_key='T_obs'
+        )
+        assert ts.is_distribution
+        numpy.testing.assert_array_equal(ts.t, [1,2,3])
+        numpy.testing.assert_array_equal(ts.y.shape, (5, 3))
+        numpy.testing.assert_array_equal(ts.y[1,:], [4,5,6])
+
+        with self.assertRaises(murefi.ShapeError):
+            murefi.Timeseries(
+                [1,2,3],
+                [[4,5,6,7]]*5,
+                independent_key='T',
+                dependent_key='T_obs'
+            )
+        pass
+
+    def test_to_from_dataset_1d(self):
+        ts = murefi.Timeseries(
+            t=numpy.linspace(0, 10, 50),
+            y=numpy.random.normal(size=(50,)),
+            independent_key='A', dependent_key='A_obs'
+        )
+        assert ts.is_distribution == False
+
+        # test with an in-memory HDF5 file
+        with h5py.File('testfile.h5', 'w', driver='core') as file:
+            group = file.create_group('A02')
+            ts._to_dataset(group)
+            assert 'A_obs' in group
+            tsds = group['A_obs']
+            assert tsds.attrs['independent_key'] == 'A'
+            assert tsds.attrs['dependent_key'] == 'A_obs'
+            assert tsds.shape == (1 + 1, 50)
+
+            # load from the dataset
+            ts_loaded = murefi.Timeseries._from_dataset(tsds)
+            assert ts.is_distribution == False
+            assert ts_loaded.independent_key == ts.independent_key
+            assert ts_loaded.dependent_key == ts.dependent_key
+            numpy.testing.assert_array_equal(ts_loaded.t, ts.t)
+            numpy.testing.assert_array_equal(ts_loaded.y, ts.y)
+        pass
+
+    def test_to_from_dataset_2d(self):
+        ts = murefi.Timeseries(
+            t=numpy.linspace(0, 10, 50),
+            y=numpy.random.normal(size=(1000,50)),
+            independent_key='A', dependent_key='A_obs'
+        )
+        assert ts.is_distribution == True
+
+        # test with an in-memory HDF5 file
+        with h5py.File('testfile.h5', 'w', driver='core') as file:
+            group = file.create_group('A02')
+            ts._to_dataset(group)
+            assert 'A_obs' in group
+            tsds = group['A_obs']
+            assert tsds.attrs['independent_key'] == 'A'
+            assert tsds.attrs['dependent_key'] == 'A_obs'
+            assert tsds.shape == (1 + 1000, 50)
+
+            # load from the dataset
+            ts_loaded = murefi.Timeseries._from_dataset(tsds)
+            assert ts.is_distribution == True
+            assert ts_loaded.independent_key == ts.independent_key
+            assert ts_loaded.dependent_key == ts.dependent_key
+            numpy.testing.assert_array_equal(ts_loaded.t, ts.t)
+            numpy.testing.assert_array_equal(ts_loaded.y, ts.y)
+        pass
 
 
 class TestBaseODEModel(unittest.TestCase):
