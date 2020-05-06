@@ -47,27 +47,28 @@ def _mini_error_model(independent:str, dependent:str):
 
 
 class ParameterMapTest(unittest.TestCase):
+    bounds = dict(
+        S_0=(1,2),
+        X_0=(3,4),
+        mue_max=(5,6),
+        K_S=(7,8),
+        t_lag=(9,10),
+        t_acc=(11,12),
+        test1A=(1,3)
+    )
+    initial_guesses = dict(
+        S_0=0.1,
+        X_0=0.2,
+        mue_max=0.3,
+        K_S=0.4,
+        t_lag=0.5,
+        t_acc=0.6
+    )
+
     def test_init(self):
         map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
-        bounds = dict(
-            S_0=(1,2),
-            X_0=(3,4),
-            mue_max=(5,6),
-            K_S=(7,8),
-            t_lag=(9,10),
-            t_acc=(11,12),
-            test1A=(1,3)
-        )
-        initial_guesses = dict(
-            S_0=0.1,
-            X_0=0.2,
-            mue_max=0.3,
-            K_S=0.4,
-            t_lag=0.5,
-            t_acc=0.6
-        )
-        parmap = murefi.ParameterMapping(map_df, bounds=bounds, guesses=initial_guesses)
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
         self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
         self.assertDictEqual(parmap.parameters, collections.OrderedDict([
             ('test1A', 'S_0'),
@@ -98,56 +99,23 @@ class ParameterMapTest(unittest.TestCase):
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
             })
-        return
-    
+        pass
+
     def test_invalid_init(self):
         map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
         mapfail_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTestFail.csv'), sep=';')
         mapfail_df.set_index(mapfail_df.columns[0])
-        bounds = dict(
-            S_0=(1,2),
-            X_0=(3,4),
-            mue_max=(5,6),
-            K_S=(7,8),
-            t_lag=(9,10),
-            t_acc=(11,12),
-            test1A=(1,3)
-        )
-        initial_guesses = dict(
-            S_0=0.1,
-            X_0=0.2,
-            mue_max=0.3,
-            K_S=0.4,
-            t_lag=0.5,
-            t_acc=0.6
-        )
         with self.assertRaises(TypeError):
-            _ = murefi.ParameterMapping(map_df, bounds, initial_guesses)
+            _ = murefi.ParameterMapping(map_df, self.bounds, self.initial_guesses)
         with self.assertRaises(ValueError):
-            _ = murefi.ParameterMapping(mapfail_df, bounds=bounds, guesses=initial_guesses)
+            _ = murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
+        pass
 
     def test_repmap(self):
         map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
-        bounds = dict(
-            S_0=(1,2),
-            X_0=(3,4),
-            mue_max=(5,6),
-            K_S=(7,8),
-            t_lag=(9,10),
-            t_acc=(11,12),
-            test1A=(1,3)
-        )
-        initial_guesses = dict(
-            S_0=0.1,
-            X_0=0.2,
-            mue_max=0.3,
-            K_S=0.4,
-            t_lag=0.5,
-            t_acc=0.6
-        )
-        parmap = murefi.ParameterMapping(map_df, bounds=bounds, guesses=initial_guesses)
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
         theta_fitted = [1,2,13,14]
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
@@ -156,7 +124,7 @@ class ParameterMapTest(unittest.TestCase):
         self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
         for key in expected.keys():
             self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
-        return
+        pass
 
 
 class TestDataset(unittest.TestCase):
@@ -465,7 +433,7 @@ class TestBaseODEModel(unittest.TestCase):
         theta = numpy.array([0.5, 0.1, 0.5])
         true = monod.dydt(y, t, theta)
         expected = [-0.5, 0.25]
-    
+
 
 class TestObjectives(unittest.TestCase):
     def test_for_dataset(self):
