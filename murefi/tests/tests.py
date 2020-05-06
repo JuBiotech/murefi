@@ -112,11 +112,25 @@ class ParameterMapTest(unittest.TestCase):
             _ = murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
         pass
 
-    def test_repmap(self):
+    def test_repmap_array(self):
         map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
         parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
         theta_fitted = [1,2,13,14]
+        expected = {
+            'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
+            'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])
+        }
+        self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
+        for key in expected.keys():
+            self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
+        pass
+
+    def test_repmap_dict(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        theta_fitted = dict(test1A=1.0, test1B=2.0, test2C=13, test2D=14)
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])

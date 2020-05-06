@@ -101,17 +101,17 @@ class ParameterMapping(object):
         return
 
 
-    def repmap(self, theta_full):
+    def repmap(self, theta_full:typing.Union[typing.Sequence, dict]) -> typing.Dict[str, typing.Sequence]:
         """Remaps a full parameter vector to a dictionary of replicate-wise parameter vectors.
 
         Args:
-            theta_full (array): full parameter vector
+            theta_full (array-like, dict): full parameter vector
 
         Returns:
             theta_dict (dict): dictionary of replicate-wise parameter vectors
         """
         pname_to_pvalue = {
-            pname : theta_full[p]
+            pname : theta_full[pname] if isinstance(theta_full, dict) else theta_full[p]
             for p, pname in enumerate(self.parameters)
         }
         theta_dict = {
