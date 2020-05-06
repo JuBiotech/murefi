@@ -107,9 +107,9 @@ class ParameterMapTest(unittest.TestCase):
         mapfail_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTestFail.csv'), sep=';')
         mapfail_df.set_index(mapfail_df.columns[0])
         with self.assertRaises(TypeError):
-            _ = murefi.ParameterMapping(map_df, self.bounds, self.initial_guesses)
+            murefi.ParameterMapping(map_df, self.bounds, self.initial_guesses)
         with self.assertRaises(ValueError):
-            _ = murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
+            murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
         pass
 
     def test_repmap_array(self):
@@ -138,6 +138,62 @@ class ParameterMapTest(unittest.TestCase):
         self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
         for key in expected.keys():
             self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
+        pass
+
+    def test_repmap_2d_array(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        P = len(parmap.parameters)
+
+        # test with (P, S) array
+        S = 11
+        theta = numpy.random.uniform(size=(P, S))
+        mapped = parmap.repmap(theta)
+        for rid, parameters in mapped.items():
+            assert isinstance(parameters, tuple)
+            assert len(parameters) == 7
+            for p, pval in enumerate(parameters):
+                assert numpy.shape(pval) in {(), (S,)}
+        pass
+
+    def test_repmap_2d_mixed_dict(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        P = len(parmap.parameters)
+
+        # test with dictionary of mixed (S,) and scalars
+        S = 23
+        theta = dict(
+            test1A=numpy.arange(S) + 1.0,
+            test1B=numpy.arange(S) + 2.0,
+            test2C=13,
+            test2D=numpy.arange(S) + 14,
+        )
+        mapped = parmap.repmap(theta)
+        mapped_shapes = {
+            rid : [numpy.shape(pval) for pval in parameters]
+            for rid, parameters in mapped.items()
+        }
+        expected = {
+            'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
+            'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])
+        }
+        for rid, parmeters in mapped.items():
+            parameters = mapped[rid]
+            assert isinstance(parameters, tuple)
+            assert len(parameters) == 7
+            for p, pval in enumerate(parameters):
+                pshape = numpy.shape(pval)
+                if pshape == ():
+                    assert pval == expected[rid][p]
+                else:
+                    assert pshape == (S,)
+                    numpy.testing.assert_array_equal(
+                        pval,
+                        numpy.arange(S) + expected[rid][p]
+                    )
         pass
 
 
