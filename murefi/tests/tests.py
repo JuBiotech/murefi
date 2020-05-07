@@ -139,15 +139,17 @@ class ParameterMapTest(unittest.TestCase):
         map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
         map_df.set_index(map_df.columns[0])
         parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
-        
-        with self.assertRaises(KeyError):
+
+        p_kick = 'test1A'
+        with self.assertRaises(KeyError) as exec:
             parameters = {
                 pname : pguess
                 for pname, pguess in zip(parmap.parameters.keys(), parmap.guesses)
             }
-            # drop a parameter
-            parameters.pop(tuple(parameters.keys())[0])
+            parameters.pop(p_kick)
             parmap.repmap(parameters)
+        assert 'missing' in exec.exception.args[0]
+        assert p_kick in exec.exception.args[0]
         pass
 
     def test_repmap_array_missing_one(self):

@@ -122,8 +122,9 @@ class ParameterMapping(object):
         # prepare a dictionary that maps parameter names to values
         pname_to_pvalue = {}
         if isinstance(theta_full, dict):
-            if not set(theta_full.keys()).issubset(self.parameters.keys()):
-                raise KeyError('Not all parameters are found in [theta_full].')
+            missing_parameters = set(self.parameters.keys()).difference(set(theta_full.keys()))
+            if missing_parameters:
+                raise KeyError(f'Parameters {missing_parameters} are missing from [theta_full].')
             pname_to_pvalue = theta_full
         else:
             if not len(theta_full) == len(self.parameters):
