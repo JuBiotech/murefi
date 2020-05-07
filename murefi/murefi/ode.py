@@ -156,7 +156,7 @@ class BaseODEModel(object):
                     expected='() or (?,)' if S is None else f'() or ({S},)'
                 )
         if symbolic_mode and S is not None:
-            raise ValueError(
+            raise DtypeError(
                 'Symbolic prediction and numeric prediction of distributions are incompatible with each other. '
                 'The [parameters] contained Tensors and vector-valued entries at the same time.'
             )

@@ -131,7 +131,7 @@ class Replicate(collections.OrderedDict):
         super().__init__()
 
     @property
-    def t_any(self) -> numpy.ndarray:
+    def t_any(self) -> typing.Optional[numpy.ndarray]:
         """Array of time values at which any variable was observed."""
         if len(self) > 0:
             return numpy.unique(numpy.hstack([
@@ -139,7 +139,7 @@ class Replicate(collections.OrderedDict):
                 for _, ts in self.items()
             ]))
         else:
-            return self.default_t_any
+            return None
 
     @property
     def t_max(self) -> float:
@@ -219,9 +219,7 @@ class Dataset(collections.OrderedDict):
     def __setitem__(self, key:str, value:Replicate):
         assert isinstance(value, Replicate)
         if not key == value.rid:
-            logger.warn(f'The key "{key}" did not match value.rid "{value.rid}".' \
-                         'Setting value.rid = key...')
-            value.rid = key
+            raise KeyError(f'The key "{key}" did not match Replicate.rid "{value.rid}".')
         return super().__setitem__(key, value)
 
     @staticmethod

@@ -46,6 +46,29 @@ def _mini_error_model(independent:str, dependent:str):
     return em
 
 
+class TestExceptions(unittest.TestCase):
+    def test_dtype_error(self):
+        with self.assertRaises(murefi.DtypeError):
+            raise murefi.DtypeError('Just the message.')
+        with self.assertRaises(murefi.DtypeError):
+            raise murefi.DtypeError('With types.', actual=str)
+        with self.assertRaises(murefi.DtypeError):
+            raise murefi.DtypeError('With types.', expected=str)
+        with self.assertRaises(murefi.DtypeError):
+            raise murefi.DtypeError('With types.', actual=int, expected=str)
+        pass
+
+    def test_shape_error(self):
+        with self.assertRaises(murefi.ShapeError):
+            raise murefi.ShapeError('Just the message.')
+        with self.assertRaises(murefi.ShapeError):
+            raise murefi.ShapeError('With shapes.', actual=(2,3))
+        with self.assertRaises(murefi.ShapeError):
+            raise murefi.ShapeError('With shapes.', expected='(2,3) or (5,6')
+        with self.assertRaises(murefi.ShapeError):
+            raise murefi.ShapeError('With shapes.', actual=(), expected='(5,4) or (?,?,6)')
+        pass
+
 class ParameterMapTest(unittest.TestCase):
     bounds = dict(
         S_0=(1,2),
@@ -110,6 +133,29 @@ class ParameterMapTest(unittest.TestCase):
             murefi.ParameterMapping(map_df, self.bounds, self.initial_guesses)
         with self.assertRaises(ValueError):
             murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
+        pass
+
+    def test_repmap_dict_missing_one(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        
+        with self.assertRaises(KeyError):
+            parameters = {
+                pname : pguess
+                for pname, pguess in zip(parmap.parameters.keys(), parmap.guesses)
+            }
+            # drop a parameter
+            parameters.pop(tuple(parameters.keys())[0])
+            parmap.repmap(parameters)
+        pass
+
+    def test_repmap_array_missing_one(self):
+        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
+        map_df.set_index(map_df.columns[0])
+        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        with self.assertRaises(murefi.ShapeError):
+            parmap.repmap(parmap.guesses[:-1])
         pass
 
     def test_repmap_array(self):
@@ -236,10 +282,19 @@ class TestDataset(unittest.TestCase):
             numpy.testing.assert_array_equal(template['B01'][ikey].t, numpy.linspace(2, 5, 20))
         return
 
+    def test_assign_wrong_key(self):
+        ds = murefi.Dataset()
+        rep = murefi.Replicate('A01')
+        with self.assertRaises(KeyError) as exec:
+            ds['bla'] = rep
+        assert 'match' in exec.exception.args[0]
+        pass
+
 
 class TestReplicate(unittest.TestCase):
     def test_t_any(self):
         rep = murefi.Replicate('A01')
+        assert rep.t_any is None
         rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
         rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
         self.assertTrue(numpy.array_equal(rep.t_any, [0,2,3,4,5,6,8,9]))
@@ -274,6 +329,13 @@ class TestReplicate(unittest.TestCase):
         self.assertTrue(template['A'].t[-1] == 3.5)
         self.assertTrue(len(template['A'].t) == 20)
         return
+
+    def test_str_repr(self):
+        template = murefi.Replicate.make_template(0.5, 3.5, independent_keys=['A', 'B', 'C'], N=20)
+        expected = 'Replicate(A[:20], B[:20], C[:20])'
+        assert template.__str__() == expected
+        assert template.__repr__() == expected
+        pass
 
 
 class TestTimeseries(unittest.TestCase):
@@ -389,6 +451,24 @@ class TestTimeseries(unittest.TestCase):
             numpy.testing.assert_array_equal(ts_loaded.y, ts.y)
         pass
 
+    def test_inputchecks(self):
+        with self.assertRaises(murefi.DtypeError):
+            murefi.Timeseries(t=4, y=[1], independent_key='I', dependent_key='D')
+        with self.assertRaises(murefi.DtypeError):
+            murefi.Timeseries(t=[4,5], y='ab', independent_key='I', dependent_key='D')
+        with self.assertRaises(murefi.DtypeError):
+            murefi.Timeseries(t=[4,5], y=(1,2), independent_key=15, dependent_key='D')
+        with self.assertRaises(murefi.DtypeError):
+            murefi.Timeseries(t=[4,5], y=(1,2), independent_key='I', dependent_key=0.7)
+        pass
+
+    def test_str_repr(self):
+        ts = murefi.Timeseries(t=[4,5], y=(1,2), independent_key='I', dependent_key='D')
+        expected = 'D[:2]'
+        assert ts.__str__() == expected
+        assert ts.__repr__() == expected
+        pass
+
 
 class TestBaseODEModel(unittest.TestCase):
     def test_attributes(self):
@@ -449,6 +529,14 @@ class TestBaseODEModel(unittest.TestCase):
             assert ikey in y_hat
             assert isinstance(y_hat[ikey], numpy.ndarray)
             assert y_hat[ikey].shape == (T, S)
+
+        with self.assertRaises(murefi.ShapeError) as exec:
+            model.solver_vectorized([1,2,3,5,6], t, theta)
+        assert 'y0' in exec.exception.args[0]
+
+        with self.assertRaises(murefi.ShapeError) as exec:
+            model.solver_vectorized(y0, t, theta[:-1])
+        assert 'theta' in exec.exception.args[0]
         pass
 
     def test_predict_replicate(self):
@@ -492,6 +580,13 @@ class TestBaseODEModel(unittest.TestCase):
             ts_template = template[dkey]
             numpy.testing.assert_array_equal(ts_pred.t, ts_template.t)
             assert numpy.shape(ts_pred.y) == (S, len(ts_template))
+
+        with self.assertRaises(murefi.ShapeError) as exec:
+            parameters = [1] * P
+            parameters[0] = numpy.ones(shape=(12,))
+            parameters[1] = numpy.ones(shape=(13,))
+            model.predict_replicate(template=template, parameters=parameters)
+        assert 'inconsistent' in exec.exception.args[0]
         pass
 
     def test_predict_replicate_inputchecks(self):
@@ -504,6 +599,19 @@ class TestBaseODEModel(unittest.TestCase):
         template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
 
         P = len(model.theta_names)
+
+        # wrong template
+        with self.assertRaises(ValueError) as exec:
+            model.predict_replicate(template='A01', parameters=numpy.ones((P,)))
+        assert 'template' in exec.exception.args[0]
+
+        # wrong parameter types
+        with self.assertRaises(murefi.DtypeError) as exec:
+            model.predict_replicate(template=template, parameters={
+                pname : 1
+                for pname in model.theta_names
+            })
+        assert 'parameters' in exec.exception.args[0]
 
         # wrong parameter shapes
         with self.assertRaises(murefi.ShapeError):
@@ -547,6 +655,12 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertTrue('C' in prediction['R2'])
         self.assertEqual(len(prediction['R1'].t_any), 60)
         self.assertEqual(len(prediction['R2'].t_any), 20)
+
+        # test that it checks the order
+        model.theta_names = model.theta_names[::-1]
+        with self.assertRaises(ValueError) as exec:
+            model.predict_dataset(dataset, pm, theta)
+        assert 'order' in exec.exception.args[0]
         return
 
     def test_predict_dataset_distribution(self):
@@ -608,7 +722,7 @@ class TestBaseODEModel(unittest.TestCase):
 
 
 class TestObjectives(unittest.TestCase):
-    def test_for_dataset(self):
+    def _prepare(self):
         model = _mini_model()
 
         # create a template dataset (uses numpy.empty to create y-values!)
@@ -627,6 +741,11 @@ class TestObjectives(unittest.TestCase):
         mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         self.assertEqual(pm.ndim, 6)
+        return model, dataset, pm
+
+    def test_for_dataset_creation(self):
+        model, dataset, pm = self._prepare()
+        self.assertEqual(pm.ndim, 6)
 
         obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
             _mini_error_model('A', 'A'),
@@ -639,7 +758,40 @@ class TestObjectives(unittest.TestCase):
         L = obj(theta)
         self.assertIsInstance(L, float)
         self.assertNotEqual(L, float('nan'))
-        return
+        pass
+
+    def test_for_dataset_checks_theta_order(self):
+        model, dataset, pm = self._prepare()
+        
+        # manipulate the order of parameters the model expects
+        model.theta_names = model.theta_names[::-1]
+        with self.assertRaises(ValueError):
+            obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
+                _mini_error_model('A', 'A'),
+                _mini_error_model('B', 'B'),
+                _mini_error_model('C', 'C'),
+            ])
+        pass
+
+    def test_for_dataset_inf_on_nan(self):
+        model, dataset, pm = self._prepare()
+        self.assertEqual(pm.ndim, 6)
+
+        # manipulate an observation into NaN
+        dataset['R1']['A'].y[0] = numpy.nan
+
+        obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
+            _mini_error_model('A', 'A'),
+            _mini_error_model('B', 'B'),
+            _mini_error_model('C', 'C'),
+        ])
+
+        self.assertTrue(callable(obj))
+        theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
+        L = obj(theta)
+        self.assertIsInstance(L, float)
+        assert numpy.isinf(L)
+        pass
 
 
 class TestSymbolicComputation(unittest.TestCase):
@@ -830,8 +982,7 @@ class TestSymbolicComputation(unittest.TestCase):
             self.assertTrue(numpy.allclose(actual[1], expected['B']))
             self.assertTrue(numpy.allclose(actual[2], expected['C']))        
         return
-    
-    
+
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_computation_graph_for_dataset(self):
         with pymc3.Model() as pmodel:
@@ -877,6 +1028,38 @@ class TestSymbolicComputation(unittest.TestCase):
             self.assertTrue(calibr8.istensor(L))
 
         return
+
+    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    def test_predict_replicate(self):
+        t = numpy.linspace(0, 1, 5)
+        model = _mini_model()
+        template = murefi.Replicate('TestRep')
+        # one observation of A, two observations of C
+        template['A'] = murefi.Timeseries(t[:3], [0]*3, independent_key='A', dependent_key='A')
+        template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
+        template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
+
+        P = len(model.theta_names)
+
+        # mix of scalars, vectors, tensors
+        with self.assertRaises(murefi.DtypeError) as exec:
+            with pymc3.Model():
+                parameters = [1] * P
+                parameters[0] = pymc3.Uniform('u')
+                parameters[1] = numpy.ones(shape=(13,))
+                model.predict_replicate(template=template, parameters=parameters)
+        assert 'incompatible' in exec.exception.args[0]
+
+        # mix of tensor and scalars
+        with pymc3.Model():
+            parameters = [1] * P
+            parameters[0] = pymc3.Uniform('u')
+            rep = model.predict_replicate(template=template, parameters=parameters)
+            for dkey in template.keys():
+                assert dkey in rep
+                numpy.testing.assert_array_equal(rep[dkey].t, template[dkey].t)
+                assert calibr8.istensor(rep[dkey].y)
+        pass
 
 
 class TestHDF5storage(unittest.TestCase):
