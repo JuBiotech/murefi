@@ -55,7 +55,7 @@ class Timeseries(collections.Sized):
 
         T = len(t)
         if not calibr8.istensor(y):
-            y = numpy.array(y)
+            y = numpy.atleast_1d(y)
             if (y.ndim == 1 and not y.shape == (T,)) \
                 or (y.ndim == 2 and y.shape[1] != T):
                 raise ShapeError(f'Argument [y] had the wrong shape.', actual=y.shape, expected=f'({T},) 0r (?, {T})')

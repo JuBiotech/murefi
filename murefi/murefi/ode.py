@@ -13,11 +13,19 @@ class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
     def __init__(self, theta_names:tuple, independent_keys:tuple):
         """Create a dynamic model.
+
         Args:
             independent_keys (iterable): formula symbols of observables
             theta_names (iterable): names of the model parameters in the correct order
+
+        Attributes:
+            theta_names (tuple): the names of initial state and kinetic parameters
+            independent_keys (tuple): independent keys of state variables
+            n_parameters (int): number of initial state and kinetic parameters combined
+            n_y (int): number of state variables
+            n_theta (int): number of kinetic parameters
         """
-        self.theta_names = tuple(theta_names)
+        self.theta_names:tuple = tuple(theta_names)
         self.independent_keys:tuple = tuple(independent_keys)
         self.n_parameters:int = len(self.theta_names)
         self.n_y:int = len(self.independent_keys)
@@ -43,7 +51,7 @@ class BaseODEModel(object):
         Uses scipy.integrate.odeint and self.dydt to solve the system.
 
         Args:
-            y0 (array): initial states (n_y,) or (n_y,)
+            y0 (array): initial states (n_y,)
             t (array): timepoints of the solution
             theta (array): system parameters (n_theta,)
         Returns:
