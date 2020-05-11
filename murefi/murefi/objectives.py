@@ -32,10 +32,10 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
         for rid, rep_obs in dataset.items()
     }
     
-    def negative_loglikelihood_dataset(theta_fit):
-        is_symbolic = calibr8.istensor(theta_fit)
+    def negative_loglikelihood_dataset(theta):
+        is_symbolic = calibr8.istensor(theta)
         L = [] if is_symbolic else 0
-        prediction = model.predict_dataset(dataset, parameter_mapping, theta_fit)
+        prediction = model.predict_dataset(dataset, parameter_mapping, theta)
 
         for rid, em_ts_list in mappings.items():
             predicted_replicate = prediction[rid]

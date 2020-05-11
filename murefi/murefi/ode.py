@@ -22,39 +22,39 @@ class BaseODEModel(object):
             parameter_names (tuple): the names of initial state and kinetic parameters
             independent_keys (tuple): independent keys of state variables
             n_parameters (int): number of initial state and kinetic parameters combined
-            n_y (int): number of state variables
-            n_theta (int): number of kinetic parameters
+            n_y0 (int): number of state variables
+            n_ode_parameters (int): number of kinetic parameters
         """
         self.parameter_names:tuple = tuple(parameter_names)
         self.independent_keys:tuple = tuple(independent_keys)
         # derived from the inputs:
         self.n_parameters:int = len(self.parameter_names)
         self.n_y0:int = len(self.independent_keys)
-        self.n_theta:int = self.n_parameters - self.n_y0
+        self.n_ode_parameters:int = self.n_parameters - self.n_y0
         super().__init__()
-    
+
     @abc.abstractmethod
-    def dydt(self, y, t, theta):
+    def dydt(self, y, t, ode_parameters):
         """First derivative of the transient variables.
         Needs to be overridden by subclasses.
         
         Args:
-            y (array): current state of the system
+            y (array): current state of the system (n_y0,)
             t (float): time since intial state
-            theta (array): system parameters
+            ode_parameters (array): system parameters (n_ode_parameters,)
         Returns:
             array: change in y at time t
         """
         raise NotImplementedError()
 
-    def solver(self, y0, t, theta) -> dict:   
+    def solver(self, y0, t, ode_parameters) -> dict:   
         """Solves the dynamic system for all T timepoints in t.
         Uses scipy.integrate.odeint and self.dydt to solve the system.
 
         Args:
-            y0 (array): initial states (n_y,)
+            y0 (array): initial states (n_y0,)
             t (array): timepoints of the solution
-            theta (array): system parameters (n_theta,)
+            ode_parameters (array): system parameters (n_ode_parameters,)
         Returns:
             y_hat (dict):
                 keys are the independent keys of the model
@@ -64,7 +64,7 @@ class BaseODEModel(object):
         concat_zero = t[0] != 0
         if concat_zero:
             t = numpy.concatenate(([0], t))
-        y = scipy.integrate.odeint(self.dydt, y0, t, (theta,)) 
+        y = scipy.integrate.odeint(self.dydt, y0, t, (ode_parameters,)) 
         # slicing and dict-conversion are dimensionality-agnostic
         if concat_zero:
             y = y[1:]
@@ -74,14 +74,14 @@ class BaseODEModel(object):
         }
         return y_hat_dict
 
-    def solver_vectorized(self, y0, t, theta) -> dict:   
+    def solver_vectorized(self, y0, t, ode_parameters) -> dict:   
         """Solves the dynamic system for all T timepoints in t with many parameter sets.
         Uses scipy.integrate.odeint and self.dydt to solve the system.
 
         Args:
-            y0 (array): initial states (n_y, n_sets)
+            y0 (array): initial states (n_y0, n_sets)
             t (array): timepoints of the solution
-            theta (array): system parameters (n_theta, n_sets)
+            ode_parameters (array): system parameters (n_ode_parameters, n_sets)
         Returns:
             y_hat (dict):
                 keys are the independent keys of the model
@@ -93,22 +93,22 @@ class BaseODEModel(object):
             t = numpy.concatenate(([0], t))
 
         y0_shape = numpy.shape(y0)
-        theta_shape = numpy.shape(theta)
+        ode_parameters_shape = numpy.shape(ode_parameters)
 
         if y0_shape[0] != self.n_y0 or len(y0_shape) != 2:
             raise ShapeError('Invalid shape of initial states [y0].', actual=y0_shape, expected=f'({self.n_y0}, ?)')
-        if theta_shape[0] != self.n_theta or len(theta_shape) != 2:
-            raise ShapeError('Invalid shape of model parameters [theta].', actual=theta_shape, expected=f'({self.n_theta}, ?)')
+        if ode_parameters_shape[0] != self.n_ode_parameters or len(ode_parameters_shape) != 2:
+            raise ShapeError('Invalid shape of model parameters [ode_parameters].', actual=ode_parameters_shape, expected=f'({self.n_ode_parameters}, ?)')
 
         # there are many parametersets
         N_parametersets = y0_shape[1]
         y0 = numpy.atleast_2d(y0)
-        theta = numpy.atleast_2d(theta)
+        ode_parameters = numpy.atleast_2d(ode_parameters)
         # reserve all memory for the results at once
         y = numpy.empty(shape=(len(t), self.n_y0, y0_shape[1]))
         # predict with each parameter set
         for s in range(N_parametersets):
-            y[:,:,s] = scipy.integrate.odeint(self.dydt, y0[:,s], t, (theta[:,s],)) 
+            y[:,:,s] = scipy.integrate.odeint(self.dydt, y0[:,s], t, (ode_parameters[:,s],)) 
 
         # slice out augmented t0 timepoint and return as dict
         if concat_zero:
@@ -126,7 +126,7 @@ class BaseODEModel(object):
         Args:
             parameters (array-like):
                 The [parameters] sequence must be a tuple, list or numpy.ndarray, with the elements 
-                being a concatenation of y0 and theta parameters.
+                being a concatenation of y0 and ode_parameters.
 
                 Symbolic prediction requires a (n_parameters,) parameter vector of type {tuple, list, numpy.ndarray}.
                 Elements may be a mix of scalars and Theano tensor variables.
@@ -183,12 +183,12 @@ class BaseODEModel(object):
         # predictions are made for all timepoints and sliced to match the template
         t = template.t_any
         y0 = parameters[:self.n_y0]
-        theta = parameters[self.n_y0:]
+        ode_parameters = parameters[self.n_y0:]
         y_hat_all = {}
         if symbolic_mode:
             masks = template.get_observation_indices(list(template.keys()))
             # symbolically predict for all timepoints
-            y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, theta)
+            y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, ode_parameters)
             # and put the symbolic predictions into y_hat_all
             for i, ikey in enumerate(self.independent_keys):
                 y_hat_all[ikey] = y_hat_tensor[i]
@@ -196,10 +196,10 @@ class BaseODEModel(object):
             masks = template.get_observation_booleans(list(template.keys()))
             if S is None:
                 # non-vectorized returns dict of (T,)
-                y_hat_all = self.solver(y0, t, theta)
+                y_hat_all = self.solver(y0, t, ode_parameters)
             else:
                 # vectorized returns dict of (T, S)
-                y_hat_all = self.solver_vectorized(y0, t, theta)
+                y_hat_all = self.solver_vectorized(y0, t, ode_parameters)
 
         # Create Timeseries objects from sliced 1D or 2D predictions
         pred = Replicate(template.rid)
@@ -218,7 +218,7 @@ class BaseODEModel(object):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
             parameter_mapping (ParameterMapping):
-                maps elements in [theta] to replicates in the [template]
+                maps elements in [parameters] to replicates in the [template]
             template (Dataset):
                 template that the prediction will be comparable with
             parameters (array-like):
@@ -232,8 +232,8 @@ class BaseODEModel(object):
             raise ValueError('The parameter order must be compatible with the model!')
         
         prediction = Dataset()
-        theta_mapped = parameter_mapping.repmap(parameters)
+        parameters_mapped = parameter_mapping.repmap(parameters)
 
         for rid, replicate in template.items():
-            prediction[rid] = self.predict_replicate(theta_mapped[rid], replicate)
+            prediction[rid] = self.predict_replicate(parameters_mapped[rid], replicate)
         return prediction

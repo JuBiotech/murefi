@@ -26,9 +26,9 @@ dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfile
 
 def _mini_model():
     class MiniModel(murefi.BaseODEModel):
-        def dydt(self, y, t, theta):
+        def dydt(self, y, t, ode_parameters):
             A, B, C = y
-            alpha, beta = theta
+            alpha, beta = ode_parameters
             dCdt = alpha*A + beta*B**2
             dAdt = -dCdt
             dBdt = -2*dCdt
@@ -482,13 +482,13 @@ class TestBaseODEModel(unittest.TestCase):
         return
 
     def test_solver(self):
-        theta = [0.23, 0.85]
+        ode_parameters = [0.23, 0.85]
         y0 = [2., 2., 0.]
         T = 5
         t = numpy.linspace(0, 1, T)
         model = _mini_model()      
 
-        y_hat = model.solver(y0, t, theta)
+        y_hat = model.solver(y0, t, ode_parameters)
         self.assertIsInstance(y_hat, dict)
         self.assertIn('A', y_hat)
         self.assertIn('B', y_hat)
@@ -502,12 +502,12 @@ class TestBaseODEModel(unittest.TestCase):
         return
 
     def test_solver_no_zero_time(self):
-        theta = [0.23, 0.85]
+        ode_parameters = [0.23, 0.85]
         y0 = [2., 2., 0.]
         t = numpy.linspace(0, 1, 5)[1:]
         model = _mini_model()      
 
-        y_hat = model.solver(y0, t, theta)
+        y_hat = model.solver(y0, t, ode_parameters)
         self.assertTrue(numpy.allclose(y_hat['A'], [1.4819299, 1.28322046, 1.16995677, 1.09060199]))
         self.assertTrue(numpy.allclose(y_hat['B'], [0.9638598, 0.56644092, 0.33991354, 0.18120399]))
         self.assertTrue(numpy.allclose(y_hat['C'], [0.5180701, 0.71677954, 0.83004323, 0.90939801]))
@@ -519,13 +519,13 @@ class TestBaseODEModel(unittest.TestCase):
 
         model = _mini_model()      
         y0 = numpy.array([[2., 2., 0.]] * S).T
-        theta = numpy.array([[0.23, 0.85]] * S).T
+        ode_parameters = numpy.array([[0.23, 0.85]] * S).T
         t = numpy.linspace(0.2, 2, T)
         assert y0.shape == (3, S)
-        assert theta.shape == (2, S)
+        assert ode_parameters.shape == (2, S)
         assert t.shape == (T,)
 
-        y_hat = model.solver_vectorized(y0, t, theta)
+        y_hat = model.solver_vectorized(y0, t, ode_parameters)
         assert isinstance(y_hat, dict)
         for ikey in model.independent_keys:
             assert ikey in y_hat
@@ -533,16 +533,16 @@ class TestBaseODEModel(unittest.TestCase):
             assert y_hat[ikey].shape == (T, S)
 
         with self.assertRaises(murefi.ShapeError) as exec:
-            model.solver_vectorized([1,2,3,5,6], t, theta)
+            model.solver_vectorized([1,2,3,5,6], t, ode_parameters)
         assert 'y0' in exec.exception.args[0]
 
         with self.assertRaises(murefi.ShapeError) as exec:
-            model.solver_vectorized(y0, t, theta[:-1])
-        assert 'theta' in exec.exception.args[0]
+            model.solver_vectorized(y0, t, ode_parameters[:-1])
+        assert 'ode_parameters' in exec.exception.args[0]
         pass
 
     def test_predict_replicate(self):
-        theta = [0.23, 0.85]
+        ode_parameters = [0.23, 0.85]
         y0 = [2., 2., 0.]
         t = numpy.linspace(0, 1, 5)
         model = _mini_model()
@@ -552,7 +552,7 @@ class TestBaseODEModel(unittest.TestCase):
         template['A'] = murefi.Timeseries(t[:3], [0]*3, independent_key='A', dependent_key='A')
         template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
         template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
-        prediction = model.predict_replicate(y0 + theta, template)
+        prediction = model.predict_replicate(y0 + ode_parameters, template)
 
         self.assertIsInstance(prediction, murefi.Replicate)
         self.assertEqual(prediction.rid, 'TestRep')
@@ -718,8 +718,8 @@ class TestBaseODEModel(unittest.TestCase):
         monod = murefi.MonodModel()
         y = numpy.array([0.1, 10])
         t = 0
-        theta = numpy.array([0.5, 0.1, 0.5])
-        true = monod.dydt(y, t, theta)
+        ode_parameters = numpy.array([0.5, 0.1, 0.5])
+        true = monod.dydt(y, t, ode_parameters)
         expected = [-0.5, 0.25]
 
 
@@ -853,7 +853,7 @@ class TestSymbolicComputation(unittest.TestCase):
                 tt.scalar('beta', dtype=theano.config.floatX),
                 tt.scalar('A', dtype=theano.config.floatX)
             ]
-            theta = [0.23, inputs[0]]
+            ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
             t = numpy.linspace(0, 1, 5)
             model = _mini_model()
@@ -865,7 +865,7 @@ class TestSymbolicComputation(unittest.TestCase):
             template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
 
             # construct the symbolic computation graph
-            prediction = model.predict_replicate(y0 + theta, template)
+            prediction = model.predict_replicate(y0 + ode_parameters, template)
 
             self.assertIsInstance(prediction, murefi.Replicate)
             self.assertEqual(prediction.rid, 'TestRep')
@@ -902,7 +902,7 @@ class TestSymbolicComputation(unittest.TestCase):
                 tt.scalar('beta', dtype=theano.config.floatX),
                 tt.scalar('A', dtype=theano.config.floatX)
             ]
-            theta = [0.23, inputs[0]]
+            ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
             t = numpy.linspace(0, 1, 5)
             model = _mini_model()
@@ -926,7 +926,7 @@ class TestSymbolicComputation(unittest.TestCase):
             ds_template['TestRep'] = template
 
             # construct the symbolic computation graph
-            prediction = model.predict_dataset(ds_template, pm, parameters = y0 + theta)
+            prediction = model.predict_dataset(ds_template, pm, parameters = y0 + ode_parameters)
 
             self.assertIsInstance(prediction, murefi.Dataset)
             self.assertIn('A', prediction['TestRep'])
@@ -964,12 +964,12 @@ class TestSymbolicComputation(unittest.TestCase):
                 pymc3.Uniform('beta', 0, 1),
                 pymc3.Uniform('A', 1, 3)
             ]
-            theta = [0.23, inputs[0]]
+            ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
             t = numpy.linspace(0, 1, 5)
 
             op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
-            outputs = op(y0, t, theta)
+            outputs = op(y0, t, ode_parameters)
 
             self.assertIsInstance(outputs, tt.TensorVariable)
 
@@ -992,7 +992,7 @@ class TestSymbolicComputation(unittest.TestCase):
                 pymc3.Uniform('beta', 0, 1),
                 pymc3.Uniform('A', 1, 3)
             ]
-            theta = [0.23, inputs[0]]
+            ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
             t = numpy.linspace(0, 1, 5)
             model = _mini_model()
@@ -1025,7 +1025,7 @@ class TestSymbolicComputation(unittest.TestCase):
                     _mini_error_model('C', 'C2'),
                     _mini_error_model('C', 'C1'),
             ])
-            L = objective(y0 + theta)
+            L = objective(y0 + ode_parameters)
             self.assertTrue(len(L) == 5)
             self.assertTrue(calibr8.istensor(L))
 
