@@ -644,7 +644,7 @@ class TestBaseODEModel(unittest.TestCase):
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
         self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
-        prediction = model.predict_dataset(template=dataset, theta_mapping=pm, parameters=theta)
+        prediction = model.predict_dataset(template=dataset, parameter_mapping=pm, parameters=theta)
 
         self.assertIsInstance(prediction, murefi.Dataset)
         self.assertIn('R1', prediction)
@@ -690,7 +690,7 @@ class TestBaseODEModel(unittest.TestCase):
         theta = numpy.array(theta)[:,numpy.newaxis] + numpy.random.uniform(0, 0.1, size=(P, S))
         assert theta.shape == (P, S)
 
-        prediction = model.predict_dataset(template=dataset, theta_mapping=pm, parameters=theta)
+        prediction = model.predict_dataset(template=dataset, parameter_mapping=pm, parameters=theta)
         self.assertIsInstance(prediction, murefi.Dataset)
         self.assertIn('R1', prediction)
         self.assertIn('R2', prediction)

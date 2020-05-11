@@ -213,10 +213,10 @@ class BaseODEModel(object):
             )
         return pred
         
-    def predict_dataset(self, template:Dataset, theta_mapping:ParameterMapping, parameters:typing.Union[typing.Sequence, dict]):
+    def predict_dataset(self, template:Dataset, parameter_mapping:ParameterMapping, parameters:typing.Union[typing.Sequence, dict]):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
-            theta_mapping (ParameterMapping):
+            parameter_mapping (ParameterMapping):
                 maps elements in [theta] to replicates in the [template]
             template (Dataset):
                 template that the prediction will be comparable with
@@ -227,11 +227,11 @@ class BaseODEModel(object):
             prediction (Dataset): prediction result
         """
         assert not template is None, 'A template must be provided!'
-        if not theta_mapping.order == self.parameter_names:
+        if not parameter_mapping.order == self.parameter_names:
             raise ValueError('The parameter order must be compatible with the model!')
         
         prediction = Dataset()
-        theta_mapped = theta_mapping.repmap(parameters)
+        theta_mapped = parameter_mapping.repmap(parameters)
 
         for rid, replicate in template.items():
             prediction[rid] = self.predict_replicate(theta_mapped[rid], replicate)
