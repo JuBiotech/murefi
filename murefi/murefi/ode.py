@@ -11,23 +11,23 @@ from . import symbolic
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
-    def __init__(self, theta_names:tuple, independent_keys:tuple):
+    def __init__(self, parameter_names:tuple, independent_keys:tuple):
         """Create a dynamic model.
 
         Args:
             independent_keys (iterable): formula symbols of observables
-            theta_names (iterable): names of the model parameters in the correct order
+            parameter_names (iterable): names of the model parameters in the correct order
 
         Attributes:
-            theta_names (tuple): the names of initial state and kinetic parameters
+            parameter_names (tuple): the names of initial state and kinetic parameters
             independent_keys (tuple): independent keys of state variables
             n_parameters (int): number of initial state and kinetic parameters combined
             n_y (int): number of state variables
             n_theta (int): number of kinetic parameters
         """
-        self.theta_names:tuple = tuple(theta_names)
+        self.parameter_names:tuple = tuple(parameter_names)
         self.independent_keys:tuple = tuple(independent_keys)
-        self.n_parameters:int = len(self.theta_names)
+        self.n_parameters:int = len(self.parameter_names)
         self.n_y:int = len(self.independent_keys)
         self.n_theta:int = self.n_parameters - self.n_y
         super().__init__()
@@ -150,7 +150,7 @@ class BaseODEModel(object):
         # check that all parameters are either scalar, or (S,) vectors
         S = None
         symbolic_mode = calibr8.istensor(parameters)
-        for pname, pval in zip(self.theta_names, parameters):
+        for pname, pval in zip(self.parameter_names, parameters):
             pdim = numpy.ndim(pval)
             pshape = numpy.shape(pval)
             if pdim == 1:
@@ -227,7 +227,7 @@ class BaseODEModel(object):
             prediction (Dataset): prediction result
         """
         assert not template is None, 'A template must be provided!'
-        if not theta_mapping.order == self.theta_names:
+        if not theta_mapping.order == self.parameter_names:
             raise ValueError('The parameter order must be compatible with the model!')
         
         prediction = Dataset()

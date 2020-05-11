@@ -33,7 +33,7 @@ def _mini_model():
             dAdt = -dCdt
             dBdt = -2*dCdt
             return [dAdt, dBdt, dCdt]
-    return MiniModel(theta_names=['A0', 'B0', 'C0', 'alpha', 'beta'], independent_keys=['A', 'B', 'C'])
+    return MiniModel(parameter_names=['A0', 'B0', 'C0', 'alpha', 'beta'], independent_keys=['A', 'B', 'C'])
 
 
 def _mini_error_model(independent:str, dependent:str):
@@ -575,7 +575,7 @@ class TestBaseODEModel(unittest.TestCase):
         template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
         template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
 
-        P = len(model.theta_names)
+        P = len(model.parameter_names)
         S = 300
         pred = model.predict_replicate(template=template, parameters=numpy.ones((P, S)))
         for dkey, ts_pred in pred.items():
@@ -600,7 +600,7 @@ class TestBaseODEModel(unittest.TestCase):
         template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
         template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
 
-        P = len(model.theta_names)
+        P = len(model.parameter_names)
 
         # wrong template
         with self.assertRaises(ValueError) as exec:
@@ -611,7 +611,7 @@ class TestBaseODEModel(unittest.TestCase):
         with self.assertRaises(murefi.DtypeError) as exec:
             model.predict_replicate(template=template, parameters={
                 pname : 1
-                for pname in model.theta_names
+                for pname in model.parameter_names
             })
         assert 'parameters' in exec.exception.args[0]
 
@@ -659,7 +659,7 @@ class TestBaseODEModel(unittest.TestCase):
         self.assertEqual(len(prediction['R2'].t_any), 20)
 
         # test that it checks the order
-        model.theta_names = model.theta_names[::-1]
+        model.parameter_names = model.parameter_names[::-1]
         with self.assertRaises(ValueError) as exec:
             model.predict_dataset(dataset, pm, theta)
         assert 'order' in exec.exception.args[0]
@@ -766,7 +766,7 @@ class TestObjectives(unittest.TestCase):
         model, dataset, pm = self._prepare()
         
         # manipulate the order of parameters the model expects
-        model.theta_names = model.theta_names[::-1]
+        model.parameter_names = model.parameter_names[::-1]
         with self.assertRaises(ValueError):
             obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
                 _mini_error_model('A', 'A'),
@@ -1041,7 +1041,7 @@ class TestSymbolicComputation(unittest.TestCase):
         template['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
         template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
 
-        P = len(model.theta_names)
+        P = len(model.parameter_names)
 
         # mix of scalars, vectors, tensors
         with self.assertRaises(murefi.DtypeError) as exec:

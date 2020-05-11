@@ -19,8 +19,8 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, theta_mapping: ParameterM
     Returns:
         objective: callable that takes a full parameter vector and returns the negative log-likelihood
     """
-    if not theta_mapping.order == model.theta_names:
-        raise ValueError(f'The parameter order in the mapping does not match with the model! ({theta_mapping.order} != {model.theta_names})')
+    if not theta_mapping.order == model.parameter_names:
+        raise ValueError(f'The parameter order in the mapping does not match with the model! ({theta_mapping.order} != {model.parameter_names})')
     
     mappings = {
         rid : [
