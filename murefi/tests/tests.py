@@ -477,7 +477,7 @@ class TestBaseODEModel(unittest.TestCase):
         model = _mini_model()
 
         self.assertIsInstance(model, murefi.BaseODEModel)
-        self.assertEqual(model.n_y, 3)
+        self.assertEqual(model.n_y0, 3)
         self.assertSequenceEqual(model.independent_keys, ['A', 'B', 'C'])
         return
 
@@ -711,7 +711,7 @@ class TestBaseODEModel(unittest.TestCase):
         monod = murefi.MonodModel()
         self.assertIsInstance(monod, murefi.BaseODEModel)
         self.assertIsInstance(monod, murefi.MonodModel)
-        self.assertEqual(monod.n_y, 2)
+        self.assertEqual(monod.n_y0, 2)
         self.assertSequenceEqual(monod.independent_keys, ['S', 'X'])
     
     def test_dydt(self):

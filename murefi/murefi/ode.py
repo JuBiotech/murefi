@@ -27,9 +27,10 @@ class BaseODEModel(object):
         """
         self.parameter_names:tuple = tuple(parameter_names)
         self.independent_keys:tuple = tuple(independent_keys)
+        # derived from the inputs:
         self.n_parameters:int = len(self.parameter_names)
-        self.n_y:int = len(self.independent_keys)
-        self.n_theta:int = self.n_parameters - self.n_y
+        self.n_y0:int = len(self.independent_keys)
+        self.n_theta:int = self.n_parameters - self.n_y0
         super().__init__()
     
     @abc.abstractmethod
@@ -94,8 +95,8 @@ class BaseODEModel(object):
         y0_shape = numpy.shape(y0)
         theta_shape = numpy.shape(theta)
 
-        if y0_shape[0] != self.n_y or len(y0_shape) != 2:
-            raise ShapeError('Invalid shape of initial states [y0].', actual=y0_shape, expected=f'({self.n_y}, ?)')
+        if y0_shape[0] != self.n_y0 or len(y0_shape) != 2:
+            raise ShapeError('Invalid shape of initial states [y0].', actual=y0_shape, expected=f'({self.n_y0}, ?)')
         if theta_shape[0] != self.n_theta or len(theta_shape) != 2:
             raise ShapeError('Invalid shape of model parameters [theta].', actual=theta_shape, expected=f'({self.n_theta}, ?)')
 
@@ -104,7 +105,7 @@ class BaseODEModel(object):
         y0 = numpy.atleast_2d(y0)
         theta = numpy.atleast_2d(theta)
         # reserve all memory for the results at once
-        y = numpy.empty(shape=(len(t), self.n_y, y0_shape[1]))
+        y = numpy.empty(shape=(len(t), self.n_y0, y0_shape[1]))
         # predict with each parameter set
         for s in range(N_parametersets):
             y[:,:,s] = scipy.integrate.odeint(self.dydt, y0[:,s], t, (theta[:,s],)) 
@@ -181,8 +182,8 @@ class BaseODEModel(object):
 
         # predictions are made for all timepoints and sliced to match the template
         t = template.t_any
-        y0 = parameters[:self.n_y]
-        theta = parameters[self.n_y:]
+        y0 = parameters[:self.n_y0]
+        theta = parameters[self.n_y0:]
         y_hat_all = {}
         if symbolic_mode:
             masks = template.get_observation_indices(list(template.keys()))
