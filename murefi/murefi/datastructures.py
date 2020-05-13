@@ -36,8 +36,8 @@ class Timeseries(collections.Sized):
         """Bundles [t] and [y] into a timeseries.
 
         Args:
-            t (list or ndarray): timepoints
-            y (list of ndarray): observations (same length as t)
+            t (list or ndarray): timepoints (T,)
+            y (list of ndarray): values with shape (T,) or distribution of values with shape (?, T)
             independent_key (str): key of the independent variable (no . or / characters allowed)
             dependent_key (str): key of the observed timeseries (no . or / characters allowed)
         """
@@ -45,12 +45,21 @@ class Timeseries(collections.Sized):
             raise DtypeError(f'Argument [t] had the wrong type.', actual=type(t), expected='tuple, list or numpy.ndarray')
         if not (isinstance(y, (tuple, list, numpy.ndarray)) or calibr8.istensor(y)):
             raise DtypeError(f'Argument [y] had the wrong type.', actual=type(y), expected='tuple, list, numpy.ndarray or TensorVariable')
+        if not isinstance(independent_key, str):
+            raise DtypeError(independent_key, actual=type(independent_key), expected=str)
+        if not isinstance(dependent_key, str):
+            raise DtypeError(dependent_key, actual=type(dependent_key), expected=str)
+        
+        if not numpy.array_equal(t, numpy.sort(t)):
+            raise ValueError('t must be monotonically increasing.')
 
-        assert isinstance(independent_key, str)
-        assert isinstance(dependent_key, str)
-        if not calibr8.istensor(y) and len(t) != len(y):
-            raise ShapeError(f'Arguments [t] and [y] must have the same length. ({len(t)} != {len(y)})')
-        assert numpy.array_equal(t, numpy.sort(t)), 't must be monotonically increasing.'
+        T = len(t)
+        if not calibr8.istensor(y):
+            y = numpy.atleast_1d(y)
+            if (y.ndim == 1 and not y.shape == (T,)) \
+                or (y.ndim == 2 and y.shape[1] != T):
+                raise ShapeError(f'Argument [y] had the wrong shape.', actual=y.shape, expected=f'({T},) 0r (?, {T})')
+
 
         self.t = numpy.array(t)
         self.y = numpy.array(y)  if not calibr8.istensor(y) else y   
@@ -58,15 +67,26 @@ class Timeseries(collections.Sized):
         self.dependent_key = dependent_key
         super().__init__()
 
+    @property
+    def is_distribution(self) -> bool:
+        """Indicates if the observations are available as a distribution or not."""
+        return self.y.ndim > 1
+
     def _to_dataset(self, grep:h5py.Group):
         """Store the Timeseries to a h5py.Dataset within the provided group.
         
         Args:
             grep (h5py.Group): parent group
         """
+        y_2d = numpy.atleast_2d(self.y)
+        data = numpy.insert(y_2d, 0, values=self.t, axis=0)
+        assert data.shape[0] == y_2d.shape[0] + 1
+        assert data.shape[1] == len(self.t)
+        # the data is saved as ONE matrix of shape (1 + N_y, N_t):
+        # --> vector of times is the first row
         ds = grep.create_dataset(
-            self.dependent_key, (2,len(self)), dtype=float,
-            data=(self.t, self.y)
+            self.dependent_key, data.shape, dtype=float,
+            data=data
         )
         ds.attrs['independent_key'] = self.independent_key
         ds.attrs['dependent_key'] = self.dependent_key
@@ -81,7 +101,8 @@ class Timeseries(collections.Sized):
         """
         ts = Timeseries(
             t=tsds[0,:],
-            y=tsds[1,:],
+            # load y as a vector, unless there's more than one row for it
+            y=tsds[1,:] if tsds.shape[0] == 2 else tsds[1:,:],
             independent_key=tsds.attrs['independent_key'],
             dependent_key=tsds.attrs['dependent_key']
         )
@@ -95,7 +116,7 @@ class Timeseries(collections.Sized):
 
     def __repr__(self):
         return self.__str__()
-    
+
 
 class Replicate(collections.OrderedDict):
     """A replicate contains one or more timeseries."""
@@ -110,7 +131,7 @@ class Replicate(collections.OrderedDict):
         super().__init__()
 
     @property
-    def t_any(self) -> numpy.ndarray:
+    def t_any(self) -> typing.Optional[numpy.ndarray]:
         """Array of time values at which any variable was observed."""
         if len(self) > 0:
             return numpy.unique(numpy.hstack([
@@ -118,7 +139,7 @@ class Replicate(collections.OrderedDict):
                 for _, ts in self.items()
             ]))
         else:
-            return self.default_t_any
+            return None
 
     @property
     def t_max(self) -> float:
@@ -198,9 +219,7 @@ class Dataset(collections.OrderedDict):
     def __setitem__(self, key:str, value:Replicate):
         assert isinstance(value, Replicate)
         if not key == value.rid:
-            logger.warn(f'The key "{key}" did not match value.rid "{value.rid}".' \
-                         'Setting value.rid = key...')
-            value.rid = key
+            raise KeyError(f'The key "{key}" did not match Replicate.rid "{value.rid}".')
         return super().__setitem__(key, value)
 
     @staticmethod

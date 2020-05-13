@@ -7,20 +7,20 @@ from . datastructures import Timeseries, Replicate, Dataset
 from . ode import BaseODEModel
 
 
-def for_dataset(dataset: Dataset, model: BaseODEModel, theta_mapping: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel]):
+def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel]):
     """Creates an objective function for fitting a Dataset
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
         model (BaseODEModel): ODE model
-        theta_mapping (ParameterMapping): murefi.ParameterMapping object
+        parameter_mapping (ParameterMapping): murefi.ParameterMapping object
         error_models: list of calibr8.ErrorModel objects
 
     Returns:
         objective: callable that takes a full parameter vector and returns the negative log-likelihood
     """
-    if not theta_mapping.order == model.theta_names:
-        raise ValueError(f'The parameter order in the mapping does not match with the model! ({theta_mapping.order} != {model.theta_names})')
+    if not parameter_mapping.order == model.parameter_names:
+        raise ValueError(f'The parameter order in the mapping does not match with the model! ({parameter_mapping.order} != {model.parameter_names})')
     
     mappings = {
         rid : [
@@ -32,10 +32,10 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, theta_mapping: ParameterM
         for rid, rep_obs in dataset.items()
     }
     
-    def negative_loglikelihood_dataset(theta_fit):
-        is_symbolic = calibr8.istensor(theta_fit)
+    def negative_loglikelihood_dataset(theta):
+        is_symbolic = calibr8.istensor(theta)
         L = [] if is_symbolic else 0
-        prediction = model.predict_dataset(dataset, theta_mapping, theta_fit)
+        prediction = model.predict_dataset(dataset, parameter_mapping, theta)
 
         for rid, em_ts_list in mappings.items():
             predicted_replicate = prediction[rid]
