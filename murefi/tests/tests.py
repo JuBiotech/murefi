@@ -98,7 +98,7 @@ class ParameterMapTest(unittest.TestCase):
             ('test1B', 'X_0'),
             ('test2C', 'mue_max'),
             ('test2D', 'K_S')
-            ]))
+        ]))
         self.assertSequenceEqual(parmap.theta_names, tuple(parmap.parameters.keys()))
         self.assertEqual(parmap.ndim, 4)
         self.assertEqual(parmap.bounds, ((1,3), (3,4), (5,6), (7,8)))
@@ -106,7 +106,11 @@ class ParameterMapTest(unittest.TestCase):
         self.assertEqual(parmap.mapping, {
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
-            })
+        })
+        numpy.testing.assert_array_equal(
+            parmap.merge_vectors(parmap.coords),
+            tuple(parmap.parameters.keys())
+        )
         parmap = murefi.ParameterMapping(map_df, bounds=None, guesses=None)
         self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
         self.assertDictEqual(parmap.parameters, collections.OrderedDict([
@@ -114,14 +118,14 @@ class ParameterMapTest(unittest.TestCase):
             ('test1B', 'X_0'),
             ('test2C', 'mue_max'),
             ('test2D', 'K_S')
-            ]))
+        ]))
         self.assertEqual(parmap.ndim, 4)
         self.assertEqual(parmap.bounds,((None, None), (None, None), (None, None), (None, None)))
         self.assertEqual(parmap.guesses, (None, None, None, None))
         self.assertEqual(parmap.mapping, {
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
-            })
+        })
         pass
 
     def test_invalid_init(self):
