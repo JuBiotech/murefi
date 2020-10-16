@@ -55,15 +55,15 @@ class ParameterMapping(object):
         This dictionary can be used with pymc3.Model(coords=coords) to ease creation
         of vector-shaped priors.
         """
-        coords = {
+        raw_coords = {
             pkind : []
             for pkind in self.order
         }
         for pname, pkind in self.parameters.items():
-            coords[pkind].append(pname)
+            raw_coords[pkind].append(pname)
         coords = {
             pkind : tuple(pnames)
-            for pkind, pnames in coords.items()
+            for pkind, pnames in raw_coords.items()
             if len(pnames) > 0
         }
         return coords
