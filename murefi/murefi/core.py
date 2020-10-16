@@ -48,6 +48,26 @@ class ParameterMapping(object):
         """Dictionary of parameter names or values (floats and strings) for each replicate"""
         return self._mapping
 
+    @property
+    def coords(self) -> typing.Dict[str, typing.Tuple[str]]:
+        """ Groups the unique parameter ids by the kind of parameter.
+
+        This dictionary can be used with pymc3.Model(coords=coords) to ease creation
+        of vector-shaped priors.
+        """
+        coords = {
+            pkind : []
+            for pkind in self.order
+        }
+        for pname, pkind in self.parameters.items():
+            coords[pkind].append(pname)
+        coords = {
+            pkind : tuple(pnames)
+            for pkind, pnames in coords.items()
+            if len(pnames) > 0
+        }
+        return coords
+
     def __init__(self, mapping:pandas.DataFrame, *, bounds:dict, guesses:dict):
         """Helper object for mapping a global parameter vector to replicate-wise model parameters.
         
@@ -100,8 +120,31 @@ class ParameterMapping(object):
             )
             for key in mapping.index
         }
-        return
+        super().__init__()
 
+    def merge_vectors(self, parameter_vectors: typing.Dict[str, typing.Sequence]) -> tuple:
+        """ Creates a full length (ndim,) parameter vector from a dictionary of
+        parameter vectors.
+
+        Arguments
+        ---------
+        parameter_vectors : dict
+            dictionary that maps parameter categories (keys in .coords) to a sequence of
+            elements corresponding to the unique parameters in the same order as the values
+            in the .coords property
+
+        Returns
+        -------
+        full_vec : tuple
+            the elements from the input parameter vectors in the order
+            specified by .parameters
+        """
+        coords = self.coords
+        full_vec = tuple(
+            parameter_vectors[pkind][coords[pkind].index(pname)]
+            for pname, pkind in self.parameters.items()
+        )
+        return full_vec
 
     def repmap(self, theta_full:typing.Union[typing.Sequence, dict]) -> typing.Dict[str, typing.Sequence]:
         """Remaps a full parameter vector to a dictionary of replicate-wise parameters.
