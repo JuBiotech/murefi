@@ -141,3 +141,6 @@ class ParameterMapping(object):
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict
+
+    def __repr__(self) -> str:
+        return f"ParameterMapping({len(self.mapping)} replicates, {len(self.order)} inputs, {self.ndim} free parameters)"
