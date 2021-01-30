@@ -4,10 +4,10 @@ stages:
 
 test-murefi:
   stage: test
-  image: python:3.6
+  image: python:3.7
   script:
     - git clone http://gitlab+deploy-token-77433:$CALIBR8_READ@jugit.fz-juelich.de/IBG-1/micropro/calibr8.git
-    - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
+    - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
     - cd murefi
     - python setup.py bdist_wheel && pip install dist/*.whl
     - python -m unittest discover -s tests -v
@@ -16,10 +16,10 @@ test-murefi:
 
 coverage-murefi:
   stage: test
-  image: python:3.6
+  image: python:3.8
   script:
     - git clone http://gitlab+deploy-token-77433:$CALIBR8_READ@jugit.fz-juelich.de/IBG-1/micropro/calibr8.git
-    - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
+    - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
     - cd murefi && python setup.py develop
     - pip install coverage
     - coverage run --parallel --source=murefi tests/tests.py
@@ -28,10 +28,10 @@ coverage-murefi:
 
 release-murefi:
   stage: release
-  image: python:3.6
+  image: python:3.8
   script:
     - git clone http://gitlab+deploy-token-77433:$CALIBR8_READ@jugit.fz-juelich.de/IBG-1/micropro/calibr8.git
-    - cd calibr8/calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ../..
+    - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
     - cd murefi && python setup.py bdist_wheel && cp dist/*.whl ..
   artifacts:
     paths:

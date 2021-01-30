@@ -30,6 +30,12 @@ except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
 
 try:
     import theano
+    if hasattr(theano, "gof"):
+        from theano import Apply, Op
+
+    else:
+        from theano.graph.op import Op
+        from theano.graph.basic import Apply
 except ModuleNotFoundError:  # theano is optional, throw exception when used
 
     class _ImportWarnerTheano:
@@ -70,7 +76,7 @@ def make_hashable(obj):
     return obj
 
 
-class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
+class IntegrationOp(Op if HAVE_PYMC3 else object):
     """This is a theano Op that becomes a node in the computation graph.
     It is not differentiable, because it uses a 'solver' function that is provided by the user.
     """
@@ -96,7 +102,7 @@ class IntegrationOp(theano.Op if HAVE_PYMC3 else object):
         y0 = theano.tensor.stack([theano.tensor.as_tensor_variable(y) for y in y0])
         theta = theano.tensor.stack([theano.tensor.as_tensor_variable(var) for var in theta])
         t = theano.tensor.as_tensor_variable(t)
-        apply_node = theano.Apply(self,
+        apply_node = Apply(self,
                             [y0, t, theta],     # symbolic inputs: y0 and theta
                             [theano.tensor.dmatrix()])     # symbolic outputs: Y_hat
         # NOTE: to support multiple different dtypes as transient variables, the

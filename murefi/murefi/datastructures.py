@@ -1,4 +1,3 @@
-import abc
 import collections
 import h5py
 import logging
@@ -30,7 +29,7 @@ class DtypeError(TypeError):
             super().__init__(message)
 
 
-class Timeseries(collections.Sized):
+class Timeseries(collections.abc.Sized):
     """A timeseries represents observations of one transient variable at certain time points."""
     def __init__(self, t, y, *, independent_key:str, dependent_key:str):
         """Bundles [t] and [y] into a timeseries.
