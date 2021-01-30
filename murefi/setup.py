@@ -27,7 +27,7 @@ setuptools.setup(name = __packagename__,
         classifiers= [
             'Programming Language :: Python',
             'Operating System :: OS Independent',
-            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
             'Intended Audience :: Developers'
         ],
         install_requires=[
@@ -36,6 +36,6 @@ setuptools.setup(name = __packagename__,
             'scipy',
             'typing',
             'h5py',
-            'calibr8>=4.0.2'
+            'calibr8>=5.0.3'
         ]
 )
