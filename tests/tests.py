@@ -88,10 +88,13 @@ class ParameterMapTest(unittest.TestCase):
         t_acc=0.6
     )
 
+    def setUp(self):
+        self.map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+        self.map_df.loc[0] = ("A01", "test1A", "test1B", 3, 4, 5, 6, 7)
+        self.map_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+
     def test_init(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
         self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
         self.assertDictEqual(parmap.parameters, collections.OrderedDict([
             ('test1A', 'S_0'),
@@ -111,7 +114,7 @@ class ParameterMapTest(unittest.TestCase):
             parmap.merge_vectors(parmap.coords),
             tuple(parmap.parameters.keys())
         )
-        parmap = murefi.ParameterMapping(map_df, bounds=None, guesses=None)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=None, guesses=None)
         self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
         self.assertDictEqual(parmap.parameters, collections.OrderedDict([
             ('test1A', 'S_0'),
@@ -129,20 +132,18 @@ class ParameterMapTest(unittest.TestCase):
         pass
 
     def test_invalid_init(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        mapfail_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTestFail.csv'), sep=';')
-        mapfail_df.set_index(mapfail_df.columns[0])
+        mapfail_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+        # the "test1B" parameter is used in two columns:
+        mapfail_df.loc[0] = ("A01", "test1A", "test1B", "test1B", 4, 5, 6, 7)
+        mapfail_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
         with self.assertRaises(TypeError):
-            murefi.ParameterMapping(map_df, self.bounds, self.initial_guesses)
+            murefi.ParameterMapping(mapfail_df, self.bounds, self.initial_guesses)
         with self.assertRaises(ValueError):
             murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
         pass
 
     def test_repmap_dict_missing_one(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
 
         p_kick = 'test1A'
         with self.assertRaises(KeyError) as exec:
@@ -157,17 +158,13 @@ class ParameterMapTest(unittest.TestCase):
         pass
 
     def test_repmap_array_missing_one(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
         with self.assertRaises(murefi.ShapeError):
             parmap.repmap(parmap.guesses[:-1])
         pass
 
     def test_repmap_array(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
         theta_fitted = [1,2,13,14]
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
@@ -179,9 +176,7 @@ class ParameterMapTest(unittest.TestCase):
         pass
 
     def test_repmap_dict(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
         theta_fitted = dict(test1A=1.0, test1B=2.0, test2C=13, test2D=14)
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
@@ -193,9 +188,7 @@ class ParameterMapTest(unittest.TestCase):
         pass
 
     def test_repmap_2d_array(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
         P = len(parmap.parameters)
 
         # test with (P, S) array
@@ -210,9 +203,7 @@ class ParameterMapTest(unittest.TestCase):
         pass
 
     def test_repmap_2d_mixed_dict(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+        parmap = murefi.ParameterMapping(self.map_df, bounds=self.bounds, guesses=self.initial_guesses)
         P = len(parmap.parameters)
 
         # test with dictionary of mixed (S,) and scalars
@@ -801,6 +792,11 @@ class TestObjectives(unittest.TestCase):
 
 
 class TestSymbolicComputation(unittest.TestCase):
+    def setUp(self):
+        self.map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+        self.map_df.loc[0] = ("A01", "test1A", "test1B", 3, 4, 5, 6, 7)
+        self.map_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_timeseries_support(self):
         t = numpy.linspace(0, 10, 10)
@@ -812,9 +808,7 @@ class TestSymbolicComputation(unittest.TestCase):
 
     @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
     def test_symbolic_parameter_mapping(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=dict(
+        parmap = murefi.ParameterMapping(self.map_df, bounds=dict(
                 S_0=(1,2),
                 X_0=(3,4),
                 mue_max=(5,6),
