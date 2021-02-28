@@ -12,6 +12,6 @@
 *.egg-info
 */__pycache__
 *.pyc
-.coverage*
+.coverage
 murefi/examples/Sandbox.ipynb
 *.h5
