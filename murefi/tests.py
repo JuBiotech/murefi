@@ -1,9 +1,9 @@
 import collections
 import h5py
-import unittest
 import numpy
 import pandas
 import pathlib
+import pytest
 import scipy.integrate
 import scipy.stats as stats
 import tempfile
@@ -46,30 +46,39 @@ def _mini_error_model(independent:str, dependent:str):
     return em
 
 
-class TestExceptions(unittest.TestCase):
+@pytest.fixture
+def df_mapping():
+    map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+    map_df.loc[0] = ("A01", "test1A", "test1B", 3, 4, 5, 6, 7)
+    map_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+    return map_df
+
+
+class TestExceptions:
     def test_dtype_error(self):
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             raise murefi.DtypeError('Just the message.')
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             raise murefi.DtypeError('With types.', actual=str)
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             raise murefi.DtypeError('With types.', expected=str)
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             raise murefi.DtypeError('With types.', actual=int, expected=str)
         pass
 
     def test_shape_error(self):
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             raise murefi.ShapeError('Just the message.')
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             raise murefi.ShapeError('With shapes.', actual=(2,3))
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             raise murefi.ShapeError('With shapes.', expected='(2,3) or (5,6')
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             raise murefi.ShapeError('With shapes.', actual=(), expected='(5,4) or (?,?,6)')
         pass
 
-class ParameterMapTest(unittest.TestCase):
+
+class TestParameterMapping:
     bounds = dict(
         S_0=(1,2),
         X_0=(3,4),
@@ -88,114 +97,101 @@ class ParameterMapTest(unittest.TestCase):
         t_acc=0.6
     )
 
-    def test_init(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
-        self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
-        self.assertDictEqual(parmap.parameters, collections.OrderedDict([
+    def test_init(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
+        assert parmap.order == ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc')
+        assert parmap.parameters == collections.OrderedDict([
             ('test1A', 'S_0'),
             ('test1B', 'X_0'),
             ('test2C', 'mue_max'),
             ('test2D', 'K_S')
-        ]))
-        self.assertSequenceEqual(parmap.theta_names, tuple(parmap.parameters.keys()))
-        self.assertEqual(parmap.ndim, 4)
-        self.assertEqual(parmap.bounds, ((1,3), (3,4), (5,6), (7,8)))
-        self.assertEqual(parmap.guesses, (0.1, 0.2, 0.3, 0.4))
-        self.assertEqual(parmap.mapping, {
+        ])
+        assert parmap.theta_names == tuple(parmap.parameters.keys())
+        numpy.testing.assert_array_equal(parmap.theta_names, tuple(parmap.parameters.keys()))
+        assert parmap.ndim == 4
+        assert parmap.bounds == ((1,3), (3,4), (5,6), (7,8))
+        assert parmap.guesses == (0.1, 0.2, 0.3, 0.4)
+        assert parmap.mapping == {
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
-        })
+        }
         numpy.testing.assert_array_equal(
             parmap.merge_vectors(parmap.coords),
             tuple(parmap.parameters.keys())
         )
-        parmap = murefi.ParameterMapping(map_df, bounds=None, guesses=None)
-        self.assertEqual(parmap.order, ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc'))
-        self.assertDictEqual(parmap.parameters, collections.OrderedDict([
+        parmap = murefi.ParameterMapping(df_mapping, bounds=None, guesses=None)
+        assert parmap.order == ('S_0', 'X_0', 'mue_max', 'K_S', 'Y_XS', 't_lag', 't_acc')
+        assert parmap.parameters == collections.OrderedDict([
             ('test1A', 'S_0'),
             ('test1B', 'X_0'),
             ('test2C', 'mue_max'),
             ('test2D', 'K_S')
-        ]))
-        self.assertEqual(parmap.ndim, 4)
-        self.assertEqual(parmap.bounds,((None, None), (None, None), (None, None), (None, None)))
-        self.assertEqual(parmap.guesses, (None, None, None, None))
-        self.assertEqual(parmap.mapping, {
+        ])
+        assert parmap.ndim == 4
+        assert parmap.bounds == ((None, None), (None, None), (None, None), (None, None))
+        assert parmap.guesses == (None, None, None, None)
+        assert parmap.mapping == {
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
-        })
+        }
         pass
 
     def test_invalid_init(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        mapfail_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTestFail.csv'), sep=';')
-        mapfail_df.set_index(mapfail_df.columns[0])
-        with self.assertRaises(TypeError):
-            murefi.ParameterMapping(map_df, self.bounds, self.initial_guesses)
-        with self.assertRaises(ValueError):
+        mapfail_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+        # the "test1B" parameter is used in two columns:
+        mapfail_df.loc[0] = ("A01", "test1A", "test1B", "test1B", 4, 5, 6, 7)
+        mapfail_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+        with pytest.raises(TypeError):
+            murefi.ParameterMapping(mapfail_df, self.bounds, self.initial_guesses)
+        with pytest.raises(ValueError):
             murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
         pass
 
-    def test_repmap_dict_missing_one(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+    def test_repmap_dict_missing_one(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
 
         p_kick = 'test1A'
-        with self.assertRaises(KeyError) as exec:
+        with pytest.raises(KeyError, match="Parameters {'" + p_kick + "'} are missing"):
             parameters = {
                 pname : pguess
                 for pname, pguess in zip(parmap.parameters.keys(), parmap.guesses)
             }
             parameters.pop(p_kick)
             parmap.repmap(parameters)
-        assert 'missing' in exec.exception.args[0]
-        assert p_kick in exec.exception.args[0]
         pass
 
-    def test_repmap_array_missing_one(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
-        with self.assertRaises(murefi.ShapeError):
+    def test_repmap_array_missing_one(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
+        with pytest.raises(murefi.ShapeError):
             parmap.repmap(parmap.guesses[:-1])
         pass
 
-    def test_repmap_array(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+    def test_repmap_array(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
         theta_fitted = [1,2,13,14]
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])
         }
-        self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
+        assert parmap.repmap(theta_fitted).keys() == expected.keys()
         for key in expected.keys():
-            self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
+            numpy.testing.assert_array_equal(parmap.repmap(theta_fitted)[key], expected[key])
         pass
 
-    def test_repmap_dict(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+    def test_repmap_dict(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
         theta_fitted = dict(test1A=1.0, test1B=2.0, test2C=13, test2D=14)
         expected = {
             'A01': numpy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             'B02': numpy.array([11.0, 2.0, 13.0, 14.0, 15.0, 16.0, 17.0])
         }
-        self.assertEqual(parmap.repmap(theta_fitted).keys(), expected.keys())
+        assert parmap.repmap(theta_fitted).keys() == expected.keys()
         for key in expected.keys():
-            self.assertTrue(numpy.array_equal(parmap.repmap(theta_fitted)[key], expected[key]))
+            numpy.testing.assert_array_equal(parmap.repmap(theta_fitted)[key], expected[key])
         pass
 
-    def test_repmap_2d_array(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+    def test_repmap_2d_array(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
         P = len(parmap.parameters)
 
         # test with (P, S) array
@@ -209,10 +205,8 @@ class ParameterMapTest(unittest.TestCase):
                 assert numpy.shape(pval) in {(), (S,)}
         pass
 
-    def test_repmap_2d_mixed_dict(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=self.bounds, guesses=self.initial_guesses)
+    def test_repmap_2d_mixed_dict(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
         P = len(parmap.parameters)
 
         # test with dictionary of mixed (S,) and scalars
@@ -249,25 +243,25 @@ class ParameterMapTest(unittest.TestCase):
         pass
 
 
-class TestDataset(unittest.TestCase):
+class TestDataset:
     def test_dataset(self):
         rep = murefi.Replicate('A01')
         rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
         ds = murefi.Dataset()
         ds['A01'] = rep
-        self.assertTrue('A01' in ds)
-        self.assertEqual(list(ds.keys()), ['A01'])
+        assert 'A01' in ds
+        assert list(ds.keys()) == ['A01']
         return
 
     def test_make_template(self):
         template = murefi.Dataset.make_template(0.5, 3.5, independent_keys='ABC', rids='R1,R2,R3,R4'.split(','), N=20)
-        self.assertIsInstance(template, murefi.Dataset)
-        self.assertIn('R1', template)
-        self.assertIn('R2', template)
-        self.assertIn('R3', template)
-        self.assertTrue(template['R1']['A'].t[0] == 0.5)
-        self.assertTrue(template['R2']['B'].t[-1] == 3.5)
-        self.assertTrue(len(template['R3']['C'].t) == 20)
+        assert isinstance(template, murefi.Dataset)
+        assert 'R1' in template
+        assert 'R2' in template
+        assert 'R3' in template
+        assert template['R1']['A'].t[0] == 0.5
+        assert template['R2']['B'].t[-1] == 3.5
+        assert len(template['R3']['C'].t) == 20
         return
 
     def test_make_template_like(self):
@@ -291,19 +285,18 @@ class TestDataset(unittest.TestCase):
     def test_assign_wrong_key(self):
         ds = murefi.Dataset()
         rep = murefi.Replicate('A01')
-        with self.assertRaises(KeyError) as exec:
+        with pytest.raises(KeyError, match="match"):
             ds['bla'] = rep
-        assert 'match' in exec.exception.args[0]
         pass
 
 
-class TestReplicate(unittest.TestCase):
+class TestReplicate:
     def test_t_any(self):
         rep = murefi.Replicate('A01')
         assert rep.t_any is None
         rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
         rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
-        self.assertTrue(numpy.array_equal(rep.t_any, [0,2,3,4,5,6,8,9]))
+        numpy.testing.assert_array_equal(rep.t_any, [0,2,3,4,5,6,8,9])
         return
 
     def test_observation_booleans(self):
@@ -311,9 +304,9 @@ class TestReplicate(unittest.TestCase):
         rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
         rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
         result = rep.get_observation_booleans(['S_observed', 'X_observed', 'P_observed'])
-        self.assertTrue(numpy.array_equal(result['S_observed'], [True,True,True,False,True,False,True,False]))
-        self.assertTrue(numpy.array_equal(result['X_observed'], [False,True,True,True,False,True,True,True]))
-        self.assertTrue(numpy.array_equal(result['P_observed'], [False,False,False,False,False,False,False,False]))
+        numpy.testing.assert_array_equal(result['S_observed'], [True,True,True,False,True,False,True,False])
+        numpy.testing.assert_array_equal(result['X_observed'], [False,True,True,True,False,True,True,True])
+        numpy.testing.assert_array_equal(result['P_observed'], [False,False,False,False,False,False,False,False])
         return
 
     def test_observation_indices(self):
@@ -321,19 +314,19 @@ class TestReplicate(unittest.TestCase):
         rep['S_observed'] = murefi.Timeseries([0,2,3,  5,  8  ], [1,2,3,4,5], independent_key='S', dependent_key='S_observed')
         rep['X_observed'] = murefi.Timeseries([  2,3,4,  6,8,9], [1,2,3,4,5,6], independent_key='X', dependent_key='X_observed')
         result = rep.get_observation_indices(['S_observed', 'X_observed', 'P_observed'])
-        self.assertTrue(numpy.array_equal(result['S_observed'], [0,1,2,4,6]))
-        self.assertTrue(numpy.array_equal(result['X_observed'], [1,2,3,5,6,7]))
-        self.assertTrue(numpy.array_equal(result['P_observed'], []))
+        numpy.testing.assert_array_equal(result['S_observed'], [0,1,2,4,6])
+        numpy.testing.assert_array_equal(result['X_observed'], [1,2,3,5,6,7])
+        numpy.testing.assert_array_equal(result['P_observed'], [])
         return
 
     def test_make_template(self):
         template = murefi.Replicate.make_template(0.5, 3.5, independent_keys=['A', 'B', 'C'], N=20)
-        self.assertIn('A', template)
-        self.assertIn('B', template)
-        self.assertIn('C', template)
-        self.assertTrue(template['A'].t[0] == 0.5)
-        self.assertTrue(template['A'].t[-1] == 3.5)
-        self.assertTrue(len(template['A'].t) == 20)
+        assert 'A' in template
+        assert 'B' in template
+        assert 'C' in template
+        assert template['A'].t[0] == 0.5
+        assert template['A'].t[-1] == 3.5
+        assert len(template['A'].t) == 20
         return
 
     def test_str_repr(self):
@@ -344,9 +337,9 @@ class TestReplicate(unittest.TestCase):
         pass
 
 
-class TestTimeseries(unittest.TestCase):
+class TestTimeseries:
     def test_t_monotonic(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             murefi.Timeseries([1,2,0,4], [1,2,3,4], independent_key='A', dependent_key='A_obs')
         pass
 
@@ -364,7 +357,7 @@ class TestTimeseries(unittest.TestCase):
         assert ts.dependent_key == 'T_obs'
         assert not ts.is_distribution
 
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             murefi.Timeseries([1,2,3], [1,2,3,4], independent_key='T', dependent_key='T_obs')
         pass
 
@@ -394,7 +387,7 @@ class TestTimeseries(unittest.TestCase):
         numpy.testing.assert_array_equal(ts.y.shape, (5, 3))
         numpy.testing.assert_array_equal(ts.y[1,:], [4,5,6])
 
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             murefi.Timeseries(
                 [1,2,3],
                 [[4,5,6,7]]*5,
@@ -458,13 +451,13 @@ class TestTimeseries(unittest.TestCase):
         pass
 
     def test_inputchecks(self):
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             murefi.Timeseries(t=4, y=[1], independent_key='I', dependent_key='D')
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             murefi.Timeseries(t=[4,5], y='ab', independent_key='I', dependent_key='D')
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             murefi.Timeseries(t=[4,5], y=(1,2), independent_key=15, dependent_key='D')
-        with self.assertRaises(murefi.DtypeError):
+        with pytest.raises(murefi.DtypeError):
             murefi.Timeseries(t=[4,5], y=(1,2), independent_key='I', dependent_key=0.7)
         pass
 
@@ -476,13 +469,13 @@ class TestTimeseries(unittest.TestCase):
         pass
 
 
-class TestBaseODEModel(unittest.TestCase):
+class TestBaseODEModel:
     def test_attributes(self):
         model = _mini_model()
 
-        self.assertIsInstance(model, murefi.BaseODEModel)
-        self.assertEqual(model.n_y0, 3)
-        self.assertSequenceEqual(model.independent_keys, ['A', 'B', 'C'])
+        assert isinstance(model, murefi.BaseODEModel)
+        assert model.n_y0 == 3
+        numpy.testing.assert_array_equal(model.independent_keys, ['A', 'B', 'C'])
         return
 
     def test_solver(self):
@@ -493,16 +486,16 @@ class TestBaseODEModel(unittest.TestCase):
         model = _mini_model()      
 
         y_hat = model.solver(y0, t, ode_parameters)
-        self.assertIsInstance(y_hat, dict)
-        self.assertIn('A', y_hat)
-        self.assertIn('B', y_hat)
-        self.assertIn('C', y_hat)
+        assert isinstance(y_hat, dict)
+        assert 'A' in y_hat
+        assert 'B' in y_hat
+        assert 'C' in y_hat
         for ikey in model.independent_keys:
             assert isinstance(y_hat[ikey], numpy.ndarray)
             assert y_hat[ikey].shape == (T,)
-        self.assertTrue(numpy.allclose(y_hat['A'], [2.0, 1.4819299, 1.28322046, 1.16995677, 1.09060199]))
-        self.assertTrue(numpy.allclose(y_hat['B'], [2.0, 0.9638598, 0.56644092, 0.33991354, 0.18120399]))
-        self.assertTrue(numpy.allclose(y_hat['C'], [0.0, 0.5180701, 0.71677954, 0.83004323, 0.90939801]))
+        assert numpy.allclose(y_hat['A'], [2.0, 1.4819299, 1.28322046, 1.16995677, 1.09060199])
+        assert numpy.allclose(y_hat['B'], [2.0, 0.9638598, 0.56644092, 0.33991354, 0.18120399])
+        assert numpy.allclose(y_hat['C'], [0.0, 0.5180701, 0.71677954, 0.83004323, 0.90939801])
         return
 
     def test_solver_no_zero_time(self):
@@ -512,9 +505,9 @@ class TestBaseODEModel(unittest.TestCase):
         model = _mini_model()      
 
         y_hat = model.solver(y0, t, ode_parameters)
-        self.assertTrue(numpy.allclose(y_hat['A'], [1.4819299, 1.28322046, 1.16995677, 1.09060199]))
-        self.assertTrue(numpy.allclose(y_hat['B'], [0.9638598, 0.56644092, 0.33991354, 0.18120399]))
-        self.assertTrue(numpy.allclose(y_hat['C'], [0.5180701, 0.71677954, 0.83004323, 0.90939801]))
+        assert numpy.allclose(y_hat['A'], [1.4819299, 1.28322046, 1.16995677, 1.09060199])
+        assert numpy.allclose(y_hat['B'], [0.9638598, 0.56644092, 0.33991354, 0.18120399])
+        assert numpy.allclose(y_hat['C'], [0.5180701, 0.71677954, 0.83004323, 0.90939801])
         return
 
     def test_solver_vectorized(self):
@@ -536,13 +529,11 @@ class TestBaseODEModel(unittest.TestCase):
             assert isinstance(y_hat[ikey], numpy.ndarray)
             assert y_hat[ikey].shape == (T, S)
 
-        with self.assertRaises(murefi.ShapeError) as exec:
+        with pytest.raises(murefi.ShapeError, match="y0"):
             model.solver_vectorized([1,2,3,5,6], t, ode_parameters)
-        assert 'y0' in exec.exception.args[0]
 
-        with self.assertRaises(murefi.ShapeError) as exec:
+        with pytest.raises(murefi.ShapeError, match="ode_parameters"):
             model.solver_vectorized(y0, t, ode_parameters[:-1])
-        assert 'ode_parameters' in exec.exception.args[0]
         pass
 
     def test_predict_replicate(self):
@@ -558,16 +549,16 @@ class TestBaseODEModel(unittest.TestCase):
         template['C2'] = murefi.Timeseries(t[1:4], [0]*3, independent_key='C', dependent_key='C2')
         prediction = model.predict_replicate(y0 + ode_parameters, template)
 
-        self.assertIsInstance(prediction, murefi.Replicate)
-        self.assertEqual(prediction.rid, 'TestRep')
-        self.assertIn('A', prediction)
-        self.assertFalse('B' in prediction)
-        self.assertIn('C1', prediction)
-        self.assertIn('C2', prediction)
+        assert isinstance(prediction, murefi.Replicate)
+        assert prediction.rid == 'TestRep'
+        assert 'A' in prediction
+        assert 'B' not in prediction
+        assert 'C1' in prediction
+        'C2' in prediction
 
-        self.assertTrue(numpy.allclose(prediction['A'].y, [2.0, 1.4819299, 1.28322046]))
-        self.assertTrue(numpy.allclose(prediction['C1'].y, [0.71677954, 0.83004323]))
-        self.assertTrue(numpy.allclose(prediction['C2'].y, [0.5180701, 0.71677954, 0.83004323]))
+        assert numpy.allclose(prediction['A'].y, [2.0, 1.4819299, 1.28322046])
+        assert numpy.allclose(prediction['C1'].y, [0.71677954, 0.83004323])
+        assert numpy.allclose(prediction['C2'].y, [0.5180701, 0.71677954, 0.83004323])
         pass
 
     def test_predict_replicate_distribution(self):
@@ -587,12 +578,11 @@ class TestBaseODEModel(unittest.TestCase):
             numpy.testing.assert_array_equal(ts_pred.t, ts_template.t)
             assert numpy.shape(ts_pred.y) == (S, len(ts_template))
 
-        with self.assertRaises(murefi.ShapeError) as exec:
+        with pytest.raises(murefi.ShapeError, match="inconsistent"):
             parameters = [1] * P
             parameters[0] = numpy.ones(shape=(12,))
             parameters[1] = numpy.ones(shape=(13,))
             model.predict_replicate(template=template, parameters=parameters)
-        assert 'inconsistent' in exec.exception.args[0]
         pass
 
     def test_predict_replicate_inputchecks(self):
@@ -607,23 +597,21 @@ class TestBaseODEModel(unittest.TestCase):
         P = len(model.parameter_names)
 
         # wrong template
-        with self.assertRaises(ValueError) as exec:
+        with pytest.raises(ValueError, match="template"):
             model.predict_replicate(template='A01', parameters=numpy.ones((P,)))
-        assert 'template' in exec.exception.args[0]
 
         # wrong parameter types
-        with self.assertRaises(murefi.DtypeError) as exec:
+        with pytest.raises(murefi.DtypeError, match="parameters"):
             model.predict_replicate(template=template, parameters={
                 pname : 1
                 for pname in model.parameter_names
             })
-        assert 'parameters' in exec.exception.args[0]
 
         # wrong parameter shapes
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             # wrong number of parameters
             model.predict_replicate(template=template, parameters=numpy.ones((P+2,)))
-        with self.assertRaises(murefi.ShapeError):
+        with pytest.raises(murefi.ShapeError):
             # 3D parameters
             model.predict_replicate(template=template, parameters=numpy.ones((P, 300, 1)))
         pass
@@ -642,31 +630,30 @@ class TestBaseODEModel(unittest.TestCase):
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
         mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-        self.assertEqual(pm.ndim, 6)
+        assert pm.ndim == 6
 
         
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
-        self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
+        numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
         prediction = model.predict_dataset(template=dataset, parameter_mapping=pm, parameters=theta)
 
-        self.assertIsInstance(prediction, murefi.Dataset)
-        self.assertIn('R1', prediction)
-        self.assertIn('R2', prediction)
-        self.assertTrue('A' in prediction['R1'])
-        self.assertTrue('B' in prediction['R1'])
-        self.assertFalse('C' in prediction['R1'])
-        self.assertFalse('A' in prediction['R2'])
-        self.assertTrue('B' in prediction['R2'])
-        self.assertTrue('C' in prediction['R2'])
-        self.assertEqual(len(prediction['R1'].t_any), 60)
-        self.assertEqual(len(prediction['R2'].t_any), 20)
+        assert isinstance(prediction, murefi.Dataset)
+        assert 'R1' in prediction
+        assert 'R2' in prediction
+        assert 'A' in prediction['R1']
+        assert 'B' in prediction['R1']
+        assert 'C' not in prediction['R1']
+        assert 'A' not in prediction['R2']
+        assert 'B' in prediction['R2']
+        assert 'C' in prediction['R2']
+        assert len(prediction['R1'].t_any) == 60
+        assert len(prediction['R2'].t_any) == 20
 
         # test that it checks the order
         model.parameter_names = model.parameter_names[::-1]
-        with self.assertRaises(ValueError) as exec:
+        with pytest.raises(ValueError, match="order"):
             model.predict_dataset(dataset, pm, theta)
-        assert 'order' in exec.exception.args[0]
         return
 
     def test_predict_dataset_distribution(self):
@@ -683,10 +670,10 @@ class TestBaseODEModel(unittest.TestCase):
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
         mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-        self.assertEqual(pm.ndim, 6)
+        assert pm.ndim == 6
 
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
-        self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
+        numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
         # randomize the parameter vector into a matrix
         P = len(theta)
@@ -695,17 +682,17 @@ class TestBaseODEModel(unittest.TestCase):
         assert theta.shape == (P, S)
 
         prediction = model.predict_dataset(template=dataset, parameter_mapping=pm, parameters=theta)
-        self.assertIsInstance(prediction, murefi.Dataset)
-        self.assertIn('R1', prediction)
-        self.assertIn('R2', prediction)
-        self.assertTrue('A' in prediction['R1'])
-        self.assertTrue('B' in prediction['R1'])
-        self.assertFalse('C' in prediction['R1'])
-        self.assertFalse('A' in prediction['R2'])
-        self.assertTrue('B' in prediction['R2'])
-        self.assertTrue('C' in prediction['R2'])
-        self.assertEqual(len(prediction['R1'].t_any), 60)
-        self.assertEqual(len(prediction['R2'].t_any), 20)
+        assert isinstance(prediction, murefi.Dataset)
+        assert 'R1' in prediction
+        assert 'R2' in prediction
+        assert 'A' in prediction['R1']
+        assert 'B' in prediction['R1']
+        assert 'C' not in prediction['R1']
+        assert 'A' not in prediction['R2']
+        assert 'B' in prediction['R2']
+        assert 'C' in prediction['R2']
+        assert len(prediction['R1'].t_any) == 60
+        assert len(prediction['R2'].t_any) == 20
         for rid, rep in prediction.items():
             for dkey, ts in rep.items():
                 assert numpy.shape(ts.y) == (S, len(dataset[rid][dkey]))
@@ -713,10 +700,10 @@ class TestBaseODEModel(unittest.TestCase):
 
     def test_attributes(self):
         monod = murefi.MonodModel()
-        self.assertIsInstance(monod, murefi.BaseODEModel)
-        self.assertIsInstance(monod, murefi.MonodModel)
-        self.assertEqual(monod.n_y0, 2)
-        self.assertSequenceEqual(monod.independent_keys, ['S', 'X'])
+        assert isinstance(monod, murefi.BaseODEModel)
+        assert isinstance(monod, murefi.MonodModel)
+        assert monod.n_y0 == 2
+        numpy.testing.assert_array_equal(monod.independent_keys, ['S', 'X'])
     
     def test_dydt(self):
         monod = murefi.MonodModel()
@@ -727,7 +714,7 @@ class TestBaseODEModel(unittest.TestCase):
         expected = [-0.5, 0.25]
 
 
-class TestObjectives(unittest.TestCase):
+class TestObjectives:
     def _prepare(self):
         model = _mini_model()
 
@@ -746,12 +733,12 @@ class TestObjectives(unittest.TestCase):
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
         mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-        self.assertEqual(pm.ndim, 6)
+        assert pm.ndim == 6
         return model, dataset, pm
 
     def test_for_dataset_creation(self):
         model, dataset, pm = self._prepare()
-        self.assertEqual(pm.ndim, 6)
+        assert pm.ndim == 6
 
         obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
             _mini_error_model('A', 'A'),
@@ -759,11 +746,11 @@ class TestObjectives(unittest.TestCase):
             _mini_error_model('C', 'C'),
         ])
         
-        self.assertTrue(callable(obj))
+        assert callable(obj)
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
         L = obj(theta)
-        self.assertIsInstance(L, float)
-        self.assertNotEqual(L, float('nan'))
+        assert isinstance(L, float)
+        assert numpy.isfinite(L)
         pass
 
     def test_for_dataset_checks_theta_order(self):
@@ -771,7 +758,7 @@ class TestObjectives(unittest.TestCase):
         
         # manipulate the order of parameters the model expects
         model.parameter_names = model.parameter_names[::-1]
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
                 _mini_error_model('A', 'A'),
                 _mini_error_model('B', 'B'),
@@ -781,7 +768,7 @@ class TestObjectives(unittest.TestCase):
 
     def test_for_dataset_inf_on_nan(self):
         model, dataset, pm = self._prepare()
-        self.assertEqual(pm.ndim, 6)
+        assert pm.ndim == 6
 
         # manipulate an observation into NaN
         dataset['R1']['A'].y[0] = numpy.nan
@@ -792,16 +779,16 @@ class TestObjectives(unittest.TestCase):
             _mini_error_model('C', 'C'),
         ])
 
-        self.assertTrue(callable(obj))
+        assert callable(obj)
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
         L = obj(theta)
-        self.assertIsInstance(L, float)
+        assert isinstance(L, float)
         assert numpy.isinf(L)
         pass
 
 
-class TestSymbolicComputation(unittest.TestCase):
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+class TestSymbolicComputation:
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
     def test_timeseries_support(self):
         t = numpy.linspace(0, 10, 10)
         with theano.config.change_flags(compute_test_value='off'):
@@ -810,11 +797,9 @@ class TestSymbolicComputation(unittest.TestCase):
             ts = murefi.Timeseries(t, y, independent_key='Test', dependent_key='Test')
         return
 
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
-    def test_symbolic_parameter_mapping(self):
-        map_df = pandas.read_csv(pathlib.Path(dir_testfiles, 'ParTest.csv'), sep=';')
-        map_df.set_index(map_df.columns[0])
-        parmap = murefi.ParameterMapping(map_df, bounds=dict(
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    def test_symbolic_parameter_mapping(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=dict(
                 S_0=(1,2),
                 X_0=(3,4),
                 mue_max=(5,6),
@@ -841,16 +826,16 @@ class TestSymbolicComputation(unittest.TestCase):
                 'B02': numpy.array([11.0, None, 13.0, None, 15.0, 16.0, 17.0])
             }
             mapped = parmap.repmap(theta_fitted)
-            self.assertEqual(mapped.keys(), expected.keys())
+            assert mapped.keys() == expected.keys()
             for rid in expected.keys():
                 for exp, act in zip(expected[rid], mapped[rid]):
                     if exp is not None:
-                        self.assertTrue(exp, act)
+                        assert exp == act
                     else:
                         assert isinstance(act, tt.TensorVariable)
         return
 
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
     def test_symbolic_predict_replicate(self):
         with theano.config.change_flags(compute_test_value='off'):
             inputs = [
@@ -871,16 +856,16 @@ class TestSymbolicComputation(unittest.TestCase):
             # construct the symbolic computation graph
             prediction = model.predict_replicate(y0 + ode_parameters, template)
 
-            self.assertIsInstance(prediction, murefi.Replicate)
-            self.assertEqual(prediction.rid, 'TestRep')
-            self.assertIn('A', prediction)
-            self.assertFalse('B' in prediction)
-            self.assertIn('C1', prediction)
-            self.assertIn('C2', prediction)
+            assert isinstance(prediction, murefi.Replicate)
+            assert prediction.rid == 'TestRep'
+            assert 'A' in prediction
+            assert 'B' not in prediction
+            assert 'C1' in prediction
+            assert 'C2' in prediction
             
-            self.assertIsInstance(prediction['A'].y, tt.TensorVariable)
-            self.assertIsInstance(prediction['C1'].y, tt.TensorVariable)
-            self.assertIsInstance(prediction['C2'].y, tt.TensorVariable)
+            assert isinstance(prediction['A'].y, tt.TensorVariable)
+            assert isinstance(prediction['C1'].y, tt.TensorVariable)
+            assert isinstance(prediction['C2'].y, tt.TensorVariable)
 
             outputs = [
                 prediction['A'].y,
@@ -894,12 +879,12 @@ class TestSymbolicComputation(unittest.TestCase):
             # compute the model outcome
             actual = f(0.85, 2.0)
 
-            self.assertTrue(numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046]))
-            self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
-            self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
+            assert numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046])
+            assert numpy.allclose(actual[1], [0.71677954, 0.83004323])
+            assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
     
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
     def test_symbolic_predict_dataset(self):
         with theano.config.change_flags(compute_test_value='off'):
             inputs = [
@@ -916,8 +901,8 @@ class TestSymbolicComputation(unittest.TestCase):
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-            self.assertEqual(pm.ndim, 5)
-            self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+            assert pm.ndim == 5
+            numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
 
             # create a dataset
             ds_template = murefi.Dataset()
@@ -932,15 +917,15 @@ class TestSymbolicComputation(unittest.TestCase):
             # construct the symbolic computation graph
             prediction = model.predict_dataset(ds_template, pm, parameters = y0 + ode_parameters)
 
-            self.assertIsInstance(prediction, murefi.Dataset)
-            self.assertIn('A', prediction['TestRep'])
-            self.assertFalse('B' in prediction['TestRep'])
-            self.assertIn('C1', prediction['TestRep'])
-            self.assertIn('C2', prediction['TestRep'])
+            assert isinstance(prediction, murefi.Dataset)
+            assert 'A' in prediction['TestRep']
+            assert 'B' not in prediction['TestRep']
+            assert 'C1' in prediction['TestRep']
+            assert 'C2' in prediction['TestRep']
             
-            self.assertIsInstance(prediction['TestRep']['A'].y, tt.TensorVariable)
-            self.assertIsInstance(prediction['TestRep']['C1'].y, tt.TensorVariable)
-            self.assertIsInstance(prediction['TestRep']['C2'].y, tt.TensorVariable)
+            assert isinstance(prediction['TestRep']['A'].y, tt.TensorVariable)
+            assert isinstance(prediction['TestRep']['C1'].y, tt.TensorVariable)
+            assert isinstance(prediction['TestRep']['C2'].y, tt.TensorVariable)
 
             outputs = [
                 prediction['TestRep']['A'].y,
@@ -954,12 +939,12 @@ class TestSymbolicComputation(unittest.TestCase):
             # compute the model outcome
             actual = f(0.85, 2.0)
 
-            self.assertTrue(numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046]))
-            self.assertTrue(numpy.allclose(actual[1], [0.71677954, 0.83004323]))
-            self.assertTrue(numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323]))
+            assert numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046])
+            assert numpy.allclose(actual[1], [0.71677954, 0.83004323])
+            assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
 
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
     def test_integration_op(self):
         model = _mini_model()
 
@@ -975,7 +960,7 @@ class TestSymbolicComputation(unittest.TestCase):
             op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
             outputs = op(y0, t, ode_parameters)
 
-            self.assertIsInstance(outputs, tt.TensorVariable)
+            assert isinstance(outputs, tt.TensorVariable)
 
             # compile a theano function for performing the computation
             f = theano.function(inputs, outputs)
@@ -984,12 +969,12 @@ class TestSymbolicComputation(unittest.TestCase):
             actual = f(0.83, 2.0)
             expected = model.solver([2., 2., 0.], t, [0.23, 0.83])
             
-            self.assertTrue(numpy.allclose(actual[0], expected['A']))
-            self.assertTrue(numpy.allclose(actual[1], expected['B']))
-            self.assertTrue(numpy.allclose(actual[2], expected['C']))        
+            assert numpy.allclose(actual[0], expected['A'])
+            assert numpy.allclose(actual[1], expected['B'])
+            assert numpy.allclose(actual[2], expected['C'])
         return
 
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
     def test_computation_graph_for_dataset(self):
         with pymc3.Model() as pmodel:
             inputs = [
@@ -1007,8 +992,8 @@ class TestSymbolicComputation(unittest.TestCase):
             mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-            self.assertEqual(pm.ndim, 5)
-            self.assertSequenceEqual(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+            assert pm.ndim == 5
+            numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
 
             # create a dataset
             ds_template = murefi.Dataset()
@@ -1030,12 +1015,12 @@ class TestSymbolicComputation(unittest.TestCase):
                     _mini_error_model('C', 'C1'),
             ])
             L = objective(y0 + ode_parameters)
-            self.assertTrue(len(L) == 5)
-            self.assertTrue(calibr8.istensor(L))
+            assert len(L) == 5
+            assert calibr8.istensor(L)
 
         return
 
-    @unittest.skipUnless(HAVE_PYMC3, 'requires PyMC3')
+    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
     def test_predict_replicate(self):
         t = numpy.linspace(0, 1, 5)
         model = _mini_model()
@@ -1048,13 +1033,12 @@ class TestSymbolicComputation(unittest.TestCase):
         P = len(model.parameter_names)
 
         # mix of scalars, vectors, tensors
-        with self.assertRaises(murefi.DtypeError) as exec:
+        with pytest.raises(murefi.DtypeError, match="incompatible"):
             with pymc3.Model():
                 parameters = [1] * P
                 parameters[0] = pymc3.Uniform('u')
                 parameters[1] = numpy.ones(shape=(13,))
                 model.predict_replicate(template=template, parameters=parameters)
-        assert 'incompatible' in exec.exception.args[0]
 
         # mix of tensor and scalars
         with pymc3.Model():
@@ -1068,7 +1052,7 @@ class TestSymbolicComputation(unittest.TestCase):
         pass
 
 
-class TestHDF5storage(unittest.TestCase):
+class TestHDF5storage:
     def _test_save_and_load(self, ds_original):
         # use a temporary directory, because a tempfile.NamedTemporaryFile can not be opened
         # multiple times on all platforms (https://docs.python.org/3/library/tempfile.html#tempfile.NamedTemporaryFile)
@@ -1077,15 +1061,15 @@ class TestHDF5storage(unittest.TestCase):
             murefi.save_dataset(ds_original, fp)
             ds_loaded = murefi.load_dataset(fp)
 
-        self.assertIsInstance(ds_loaded, murefi.Dataset)
-        self.assertEqual(set(ds_original.keys()), set(ds_loaded.keys()))
+        assert isinstance(ds_loaded, murefi.Dataset)
+        assert set(ds_original.keys()) == set(ds_loaded.keys())
 
         for rid, rep_orig in ds_original.items():
             for dkey, ts_orig in rep_orig.items():
                 ts_loaded = ds_loaded[rid][dkey]
-                self.assertIsInstance(ts_loaded, murefi.Timeseries)
-                self.assertEqual(ts_orig.independent_key, ts_loaded.independent_key)
-                self.assertEqual(ts_orig.dependent_key, ts_loaded.dependent_key)
+                assert isinstance(ts_loaded, murefi.Timeseries)
+                assert ts_orig.independent_key == ts_loaded.independent_key
+                assert ts_orig.dependent_key == ts_loaded.dependent_key
                 numpy.testing.assert_array_equal(ts_orig.t, ts_loaded.t)
                 numpy.testing.assert_array_equal(ts_orig.y, ts_loaded.y)
         return
@@ -1104,10 +1088,6 @@ class TestHDF5storage(unittest.TestCase):
         ds['R2'].pop('S')
         ds['R2'].pop('X')
         ds['R2'].pop('P')
-        self.assertEqual(len(ds['R2']), 0)
+        assert len(ds['R2']) == 0
         self._test_save_and_load(ds)
         return
-
-
-if __name__ == '__main__':
-    unittest.main(exit=False)
