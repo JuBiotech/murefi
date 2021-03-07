@@ -334,6 +334,11 @@ class TestReplicate:
         assert len(template['A'].t) == 20
         return
 
+    def test_no_duplicate_time_in_templates(self):
+        template = murefi.Replicate.make_template(tmin=2, tmax=2, independent_keys="ABC")
+        assert len(template["B"].t) == 1
+        pass
+
     def test_str_repr(self):
         template = murefi.Replicate.make_template(0.5, 3.5, independent_keys=['A', 'B', 'C'], N=20)
         expected = 'Replicate(A[:20], B[:20], C[:20])'
