@@ -48,9 +48,9 @@ def _mini_error_model(independent:str, dependent:str):
 
 @pytest.fixture
 def df_mapping():
-    map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
-    map_df.loc[0] = ("A01", "test1A", "test1B", 3, 4, 5, 6, 7)
-    map_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+    map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";")).set_index("rid")
+    map_df.loc["A01"] = ("test1A", "test1B", 3, 4, 5, 6, 7)
+    map_df.loc["B02"] = (11, "test1B", "test2C", "test2D", 15, 16, 17)
     return map_df
 
 
@@ -134,13 +134,18 @@ class TestParameterMapping:
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
         }
+        
+        with pytest.warns(UserWarning, match="should be named 'rid'"):
+            dfcopy = df_mapping.copy()
+            dfcopy.index.name = "id"
+            murefi.ParameterMapping(dfcopy, bounds=None, guesses=None)
         pass
 
     def test_invalid_init(self):
-        mapfail_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+        mapfail_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";")).set_index("rid")
         # the "test1B" parameter is used in two columns:
-        mapfail_df.loc[0] = ("A01", "test1A", "test1B", "test1B", 4, 5, 6, 7)
-        mapfail_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+        mapfail_df.loc["A01"] = ("test1A", "test1B", "test1B", 4, 5, 6, 7)
+        mapfail_df.loc["B02"] = (11, "test1B", "test2C", "test2D", 15, 16, 17)
         with pytest.raises(TypeError):
             murefi.ParameterMapping(mapfail_df, self.bounds, self.initial_guesses)
         with pytest.raises(ValueError):
@@ -625,10 +630,9 @@ class TestBaseODEModel:
         dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         assert pm.ndim == 6
 
@@ -665,10 +669,9 @@ class TestBaseODEModel:
         dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         assert pm.ndim == 6
 
@@ -728,10 +731,9 @@ class TestObjectives:
                 ts.y = numpy.repeat(0.5, len(ts))
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         assert pm.ndim == 6
         return model, dataset, pm
@@ -897,9 +899,8 @@ class TestSymbolicComputation:
             model = _mini_model()
             
             # create a parameter mapping
-            mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+            mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
-            mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
             assert pm.ndim == 5
             numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
@@ -987,10 +988,9 @@ class TestSymbolicComputation:
             model = _mini_model()
             
             # create a parameter mapping
-            mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+            mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
-            mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
             assert pm.ndim == 5
             numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))

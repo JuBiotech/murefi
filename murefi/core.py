@@ -3,6 +3,7 @@ import logging
 import numpy
 import pandas
 import typing
+import warnings
 
 import calibr8
 
@@ -82,7 +83,11 @@ class ParameterMapping(object):
             bounds = dict()
         if guesses is None:
             guesses = dict()
-        mapping = mapping.set_index(mapping.columns[0])
+        if not mapping.index.name == "rid":
+            warnings.warn(
+                f"The index of the mapping DataFrame should be named 'rid' but was '{mapping.index.name}'.",
+                UserWarning,
+            )
 
         self._order = tuple(mapping.columns)
 
