@@ -7,14 +7,14 @@ from . datastructures import Timeseries, Replicate, Dataset
 from . ode import BaseODEModel
 
 
-def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: ParameterMapping, error_models: typing.Iterable[calibr8.ErrorModel]):
+def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: ParameterMapping, calibration_models: typing.Iterable[calibr8.CalibrationModel]):
     """Creates an objective function for fitting a Dataset
     
     Args:
         dataset: Dataset object for which the parameters should be fitted.
         model (BaseODEModel): ODE model
         parameter_mapping (ParameterMapping): murefi.ParameterMapping object
-        error_models: list of calibr8.ErrorModel objects
+        calibration_models: list of calibr8.CalibrationModel objects
 
     Returns:
         objective: callable that takes a full parameter vector and returns the negative log-likelihood
@@ -24,10 +24,10 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
     
     mappings = {
         rid : [
-            # pairs of ErrorModel and observed Timeseries
-            (em, rep_obs[em.dependent_key])
-            for em in error_models
-            if em.dependent_key in rep_obs
+            # pairs of CalibrationModel and observed Timeseries
+            (cm, rep_obs[cm.dependent_key])
+            for cm in calibration_models
+            if cm.dependent_key in rep_obs
         ]
         for rid, rep_obs in dataset.items()
     }
@@ -39,9 +39,9 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
 
         for rid, em_ts_list in mappings.items():
             predicted_replicate = prediction[rid]
-            for (em, observed_ts) in em_ts_list:
-                predicted_ts = predicted_replicate[em.dependent_key]
-                ll = em.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=rid, dependent_key=em.dependent_key)
+            for (cm, observed_ts) in em_ts_list:
+                predicted_ts = predicted_replicate[cm.dependent_key]
+                ll = cm.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=rid, dependent_key=cm.dependent_key)
                 if is_symbolic:
                     L.append(ll)
                 else:

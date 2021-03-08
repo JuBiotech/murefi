@@ -36,14 +36,14 @@ def _mini_model():
     return MiniModel(parameter_names=['A0', 'B0', 'C0', 'alpha', 'beta'], independent_keys=['A', 'B', 'C'])
 
 
-def _mini_error_model(independent:str, dependent:str):
-    class EM(calibr8.BasePolynomialModelT):
+def _mini_calibration_model(independent:str, dependent:str):
+    class CM(calibr8.BasePolynomialModelT):
         def __init__(self):
             super().__init__(independent_key=independent, dependent_key=dependent, mu_degree=1, scale_degree=0)
-    em = EM()
-    em.theta_fitted = [0, 1, 1, 100]
-    assert len(em.theta_fitted) == len(em.theta_names)
-    return em
+    cm = CM()
+    cm.theta_fitted = [0, 1, 1, 100]
+    assert len(cm.theta_fitted) == len(cm.theta_names)
+    return cm
 
 
 @pytest.fixture
@@ -757,10 +757,10 @@ class TestObjectives:
         model, dataset, pm = self._prepare()
         assert pm.ndim == 6
 
-        obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
-            _mini_error_model('A', 'A'),
-            _mini_error_model('B', 'B'),
-            _mini_error_model('C', 'C'),
+        obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+            _mini_calibration_model('A', 'A'),
+            _mini_calibration_model('B', 'B'),
+            _mini_calibration_model('C', 'C'),
         ])
         
         assert callable(obj)
@@ -776,10 +776,10 @@ class TestObjectives:
         # manipulate the order of parameters the model expects
         model.parameter_names = model.parameter_names[::-1]
         with pytest.raises(ValueError):
-            obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
-                _mini_error_model('A', 'A'),
-                _mini_error_model('B', 'B'),
-                _mini_error_model('C', 'C'),
+            obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+                _mini_calibration_model('A', 'A'),
+                _mini_calibration_model('B', 'B'),
+                _mini_calibration_model('C', 'C'),
             ])
         pass
 
@@ -790,10 +790,10 @@ class TestObjectives:
         # manipulate an observation into NaN
         dataset['R1']['A'].y[0] = numpy.nan
 
-        obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
-            _mini_error_model('A', 'A'),
-            _mini_error_model('B', 'B'),
-            _mini_error_model('C', 'C'),
+        obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+            _mini_calibration_model('A', 'A'),
+            _mini_calibration_model('B', 'B'),
+            _mini_calibration_model('C', 'C'),
         ])
 
         assert callable(obj)
@@ -1024,10 +1024,10 @@ class TestSymbolicComputation:
             template2['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
             ds_template['TestRep2'] = template2
             
-            objective = murefi.objectives.for_dataset(ds_template, model, pm, error_models=[
-                    _mini_error_model('A', 'A'),
-                    _mini_error_model('C', 'C2'),
-                    _mini_error_model('C', 'C1'),
+            objective = murefi.objectives.for_dataset(ds_template, model, pm, calibration_models=[
+                    _mini_calibration_model('A', 'A'),
+                    _mini_calibration_model('C', 'C2'),
+                    _mini_calibration_model('C', 'C1'),
             ])
             L = objective(y0 + ode_parameters)
             assert len(L) == 5
