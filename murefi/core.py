@@ -151,6 +151,16 @@ class ParameterMapping(object):
         )
         return full_vec
 
+    def as_dataframe(self) -> pandas.DataFrame:
+        """ Re-creates the DataFrame representation of this parameter mapping.
+
+        It is NOT the identical DataFrame object it was initialized from!
+        """
+        df_mapping = pandas.DataFrame.from_dict(self.mapping, orient="index")
+        df_mapping.index.name = "rid"
+        df_mapping.columns = self.order
+        return df_mapping
+
     def repmap(self, theta_full:typing.Union[typing.Sequence, dict]) -> typing.Dict[str, typing.Sequence]:
         """Remaps a full parameter vector to a dictionary of replicate-wise parameters.
 

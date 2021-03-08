@@ -152,6 +152,16 @@ class TestParameterMapping:
             murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
         pass
 
+    def test_as_dataframe(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
+        df = parmap.as_dataframe()
+        assert isinstance(df, pandas.DataFrame)
+        assert df.index.name == "rid"
+        numpy.testing.assert_array_equal(df.index, df_mapping.index)
+        numpy.testing.assert_array_equal(df.columns, df_mapping.columns)
+        numpy.testing.assert_array_equal(df.values, df_mapping.values)
+        pass
+
     def test_repmap_dict_missing_one(self, df_mapping):
         parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
 
