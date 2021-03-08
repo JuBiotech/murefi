@@ -1059,6 +1059,11 @@ class TestSymbolicComputation:
         with pymc3.Model():
             parameters = [1] * P
             parameters[0] = pymc3.Uniform('u')
+            if murefi.symbolic.HAVE_SUNODE:
+                # Workaround for https://github.com/aseyboldt/sunode/issues/16
+                # is to include a free parameter in the ODE parameters:
+                parameters[-1] = pymc3.Normal("n", mu=1)
+
             rep = model.predict_replicate(template=template, parameters=parameters)
             for dkey in template.keys():
                 assert dkey in rep
