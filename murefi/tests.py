@@ -1030,8 +1030,8 @@ class TestSymbolicComputation:
                     _mini_calibration_model('C', 'C1'),
             ])
             L = objective(y0 + ode_parameters)
-            assert len(L) == 5
             assert calibr8.istensor(L)
+            assert L.ndim == 0
 
         return
 
