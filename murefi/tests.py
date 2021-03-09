@@ -36,21 +36,21 @@ def _mini_model():
     return MiniModel(parameter_names=['A0', 'B0', 'C0', 'alpha', 'beta'], independent_keys=['A', 'B', 'C'])
 
 
-def _mini_error_model(independent:str, dependent:str):
-    class EM(calibr8.BasePolynomialModelT):
+def _mini_calibration_model(independent:str, dependent:str):
+    class CM(calibr8.BasePolynomialModelT):
         def __init__(self):
             super().__init__(independent_key=independent, dependent_key=dependent, mu_degree=1, scale_degree=0)
-    em = EM()
-    em.theta_fitted = [0, 1, 1, 100]
-    assert len(em.theta_fitted) == len(em.theta_names)
-    return em
+    cm = CM()
+    cm.theta_fitted = [0, 1, 1, 100]
+    assert len(cm.theta_fitted) == len(cm.theta_names)
+    return cm
 
 
 @pytest.fixture
 def df_mapping():
-    map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
-    map_df.loc[0] = ("A01", "test1A", "test1B", 3, 4, 5, 6, 7)
-    map_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+    map_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";")).set_index("rid")
+    map_df.loc["A01"] = ("test1A", "test1B", 3, 4, 5, 6, 7)
+    map_df.loc["B02"] = (11, "test1B", "test2C", "test2D", 15, 16, 17)
     return map_df
 
 
@@ -134,17 +134,32 @@ class TestParameterMapping:
             'A01':('test1A', 'test1B', 3.0, 4.0, 5.0, 6.0, 7.0),
             'B02':(11.0, 'test1B', 'test2C', 'test2D', 15.0, 16.0, 17.0)
         }
+        
+        with pytest.warns(UserWarning, match="should be named 'rid'"):
+            dfcopy = df_mapping.copy()
+            dfcopy.index.name = "id"
+            murefi.ParameterMapping(dfcopy, bounds=None, guesses=None)
         pass
 
     def test_invalid_init(self):
-        mapfail_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";"))
+        mapfail_df = pandas.DataFrame(columns="rid;S_0;X_0;mue_max;K_S;Y_XS;t_lag;t_acc".split(";")).set_index("rid")
         # the "test1B" parameter is used in two columns:
-        mapfail_df.loc[0] = ("A01", "test1A", "test1B", "test1B", 4, 5, 6, 7)
-        mapfail_df.loc[1] = ("B02", 11, "test1B", "test2C", "test2D", 15, 16, 17)
+        mapfail_df.loc["A01"] = ("test1A", "test1B", "test1B", 4, 5, 6, 7)
+        mapfail_df.loc["B02"] = (11, "test1B", "test2C", "test2D", 15, 16, 17)
         with pytest.raises(TypeError):
             murefi.ParameterMapping(mapfail_df, self.bounds, self.initial_guesses)
         with pytest.raises(ValueError):
             murefi.ParameterMapping(mapfail_df, bounds=self.bounds, guesses=self.initial_guesses)
+        pass
+
+    def test_as_dataframe(self, df_mapping):
+        parmap = murefi.ParameterMapping(df_mapping, bounds=self.bounds, guesses=self.initial_guesses)
+        df = parmap.as_dataframe()
+        assert isinstance(df, pandas.DataFrame)
+        assert df.index.name == "rid"
+        numpy.testing.assert_array_equal(df.index, df_mapping.index)
+        numpy.testing.assert_array_equal(df.columns, df_mapping.columns)
+        numpy.testing.assert_array_equal(df.values, df_mapping.values)
         pass
 
     def test_repmap_dict_missing_one(self, df_mapping):
@@ -328,6 +343,11 @@ class TestReplicate:
         assert template['A'].t[-1] == 3.5
         assert len(template['A'].t) == 20
         return
+
+    def test_no_duplicate_time_in_templates(self):
+        template = murefi.Replicate.make_template(tmin=2, tmax=2, independent_keys="ABC")
+        assert len(template["B"].t) == 1
+        pass
 
     def test_str_repr(self):
         template = murefi.Replicate.make_template(0.5, 3.5, independent_keys=['A', 'B', 'C'], N=20)
@@ -625,10 +645,9 @@ class TestBaseODEModel:
         dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         assert pm.ndim == 6
 
@@ -665,10 +684,9 @@ class TestBaseODEModel:
         dataset['R2'] = murefi.Replicate.make_template(0.2, 1, 'BC', N=20, rid='R2')
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         assert pm.ndim == 6
 
@@ -728,10 +746,9 @@ class TestObjectives:
                 ts.y = numpy.repeat(0.5, len(ts))
 
         # create a parameter mapping that uses replicate-wise alpha parameters (6 dims)
-        mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+        mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        mapping = mapping.reset_index()
         pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
         assert pm.ndim == 6
         return model, dataset, pm
@@ -740,10 +757,10 @@ class TestObjectives:
         model, dataset, pm = self._prepare()
         assert pm.ndim == 6
 
-        obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
-            _mini_error_model('A', 'A'),
-            _mini_error_model('B', 'B'),
-            _mini_error_model('C', 'C'),
+        obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+            _mini_calibration_model('A', 'A'),
+            _mini_calibration_model('B', 'B'),
+            _mini_calibration_model('C', 'C'),
         ])
         
         assert callable(obj)
@@ -759,10 +776,10 @@ class TestObjectives:
         # manipulate the order of parameters the model expects
         model.parameter_names = model.parameter_names[::-1]
         with pytest.raises(ValueError):
-            obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
-                _mini_error_model('A', 'A'),
-                _mini_error_model('B', 'B'),
-                _mini_error_model('C', 'C'),
+            obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+                _mini_calibration_model('A', 'A'),
+                _mini_calibration_model('B', 'B'),
+                _mini_calibration_model('C', 'C'),
             ])
         pass
 
@@ -773,10 +790,10 @@ class TestObjectives:
         # manipulate an observation into NaN
         dataset['R1']['A'].y[0] = numpy.nan
 
-        obj = murefi.objectives.for_dataset(dataset, model, pm, error_models=[
-            _mini_error_model('A', 'A'),
-            _mini_error_model('B', 'B'),
-            _mini_error_model('C', 'C'),
+        obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+            _mini_calibration_model('A', 'A'),
+            _mini_calibration_model('B', 'B'),
+            _mini_calibration_model('C', 'C'),
         ])
 
         assert callable(obj)
@@ -897,9 +914,8 @@ class TestSymbolicComputation:
             model = _mini_model()
             
             # create a parameter mapping
-            mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+            mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
-            mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
             assert pm.ndim == 5
             numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
@@ -987,10 +1003,9 @@ class TestSymbolicComputation:
             model = _mini_model()
             
             # create a parameter mapping
-            mapping = pandas.DataFrame(columns='id,A0,B0,C0,alpha,beta'.split(',')).set_index('id')
+            mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
-            mapping = mapping.reset_index()
             pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
             assert pm.ndim == 5
             numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
@@ -1009,10 +1024,10 @@ class TestSymbolicComputation:
             template2['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
             ds_template['TestRep2'] = template2
             
-            objective = murefi.objectives.for_dataset(ds_template, model, pm, error_models=[
-                    _mini_error_model('A', 'A'),
-                    _mini_error_model('C', 'C2'),
-                    _mini_error_model('C', 'C1'),
+            objective = murefi.objectives.for_dataset(ds_template, model, pm, calibration_models=[
+                    _mini_calibration_model('A', 'A'),
+                    _mini_calibration_model('C', 'C2'),
+                    _mini_calibration_model('C', 'C1'),
             ])
             L = objective(y0 + ode_parameters)
             assert len(L) == 5

@@ -4,29 +4,8 @@ import pandas
 import base64
 import hashlib
 
+import calibr8
 
-HAVE_PYMC3 = False
-
-try:
-    import pymc3
-    HAVE_PYMC3 = True
-except ModuleNotFoundError:  # pymc3 is optional, throw exception when used
-    class _ImportWarnerPyMC3:
-        __all__ = []
-
-        def __init__(self, attr):
-            self.attr = attr
-
-        def __call__(self, *args, **kwargs):
-            raise ImportError(
-                "PyMC3 is not installed. In order to use this function:\npip install pymc3"
-            )
-
-    class _PyMC3:
-        def __getattr__(self, attr):
-            return _ImportWarnerPyMC3(attr)
-    
-    pm = _PyMC3()
 
 try:
     import theano
@@ -36,24 +15,18 @@ try:
     else:
         from theano.graph.op import Op
         from theano.graph.basic import Apply
-except ModuleNotFoundError:  # theano is optional, throw exception when used
+    HAVE_THEANO = True
+except ModuleNotFoundError:
+    HAVE_THEANO = False
+    theano = calibr8.utils.ImportWarner('theano')
 
-    class _ImportWarnerTheano:
-        __all__ = []
+try:
+    import pymc3
+    HAVE_PYMC3 = True
+except ModuleNotFoundError:
+    HAVE_PYMC3 = False
+    pymc3 = calibr8.utils.ImportWarner('pymc3')
 
-        def __init__(self, attr):
-            self.attr = attr
-
-        def __call__(self, *args, **kwargs):
-            raise ImportError(
-                "Theano is not installed. In order to use this function:\npip install theano"
-            )
-
-    class _Theano:
-        def __getattr__(self, attr):
-            return _ImportWarnerTheano(attr)
-    
-    theano = _Theano()
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +49,7 @@ def make_hashable(obj):
     return obj
 
 
-class IntegrationOp(Op if HAVE_PYMC3 else object):
+class IntegrationOp(Op if HAVE_THEANO else object):
     """This is a theano Op that becomes a node in the computation graph.
     It is not differentiable, because it uses a 'solver' function that is provided by the user.
     """

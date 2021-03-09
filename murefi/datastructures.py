@@ -199,6 +199,8 @@ class Replicate(collections.OrderedDict):
         Returns:
             replicate (Replicate): replicate object containing dense timeseries with random y data
         """
+        if tmin == tmax:
+            N = 1
         t = numpy.linspace(tmin, tmax, N)
         rep = Replicate(rid)
         for yk in independent_keys:
