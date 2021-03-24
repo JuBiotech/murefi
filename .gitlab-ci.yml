@@ -4,7 +4,9 @@ stages:
 
 test-murefi:
   stage: test
-  image: python:3.7
+  image: continuumio/miniconda3:latest
+  before_script:
+  - conda install -c conda-forge matplotlib mkl numpy scipy
   script:
     - git clone http://gitlab+deploy-token-77433:$CALIBR8_READ@jugit.fz-juelich.de/IBG-1/micropro/calibr8.git
     - cd calibr8 && python setup.py bdist_wheel && pip install dist/*.whl && cd ..
@@ -12,6 +14,8 @@ test-murefi:
     - pip install pytest pytest-cov
     - pytest --cov=./murefi --cov-append --cov-report term-missing murefi/tests.py
     - pip install pymc3
+    - pytest --cov=./murefi --cov-append --cov-report term-missing murefi/tests.py
+    - conda install -c conda-forge sunode
     - pytest --cov=./murefi --cov-append --cov-report term-missing murefi/tests.py
     - coverage report -m
 

@@ -27,6 +27,14 @@ except ModuleNotFoundError:
     HAVE_PYMC3 = False
     pymc3 = calibr8.utils.ImportWarner('pymc3')
 
+try:
+    import sunode
+    import sunode.wrappers.as_theano
+    HAVE_SUNODE = True
+except ModuleNotFoundError:
+    HAVE_SUNODE = False
+    sunode = calibr8.utils.ImportWarner('sunode')
+
 
 logger = logging.getLogger(__name__)
 
@@ -104,3 +112,52 @@ class IntegrationOp(Op if HAVE_THEANO else object):
             (s_y0[0],s_x[0])
         ]
         return output_shapes
+
+
+def named_with_shapes_dict(vars, names):
+    d = {}
+    for n, name in enumerate(names):
+        v = vars[n]
+        if calibr8.istensor(v):
+            d[name] = (v, ())
+        else:
+            #v = tt.as_tensor_variable(pymc3.floatX(v))
+            v = numpy.array(v).astype(theano.config.floatX)
+            d[name] = v
+    return d
+
+
+def solve_sunode(
+    dydt,
+    independent_keys,
+    y0,
+    t,
+    ode_parameters,
+    parameter_names,
+) -> dict:
+    def dydt_dict(t, y, params):
+        dy = dydt([
+            getattr(y, ikey)
+            for ikey in independent_keys
+        ], t, [
+            getattr(params, pkey)
+            for pkey in parameter_names
+        ])
+        return {
+            ikey : dy[i]
+            for i, ikey in enumerate(independent_keys)
+        }
+
+    y0 = named_with_shapes_dict(y0, independent_keys)
+    params = named_with_shapes_dict(ode_parameters, parameter_names)
+    params['extra'] = numpy.zeros(1)
+    solution, flat_solution, problem, sol, y0_flat, params_subs_flat, flat_sens, wrapper = sunode.wrappers.as_theano.solve_ivp(
+        y0=y0,
+        params=params,
+        rhs=dydt_dict,
+        tvals=t,
+        t0=t[0],
+        derivatives="forward",
+        solver_kwargs=dict(sens_mode="simultaneous", compute_sens=True)
+    )
+    return solution

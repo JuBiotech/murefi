@@ -5,6 +5,7 @@ import calibr8
 from . core import ParameterMapping
 from . datastructures import Timeseries, Replicate, Dataset
 from . ode import BaseODEModel
+from . import symbolic
 
 
 def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: ParameterMapping, calibration_models: typing.Iterable[calibr8.CalibrationModel]):
@@ -34,22 +35,24 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
     
     def negative_loglikelihood_dataset(theta):
         is_symbolic = calibr8.istensor(theta)
-        L = [] if is_symbolic else 0
+        L = []
         prediction = model.predict_dataset(dataset, parameter_mapping, theta)
 
         for rid, em_ts_list in mappings.items():
             predicted_replicate = prediction[rid]
             for (cm, observed_ts) in em_ts_list:
                 predicted_ts = predicted_replicate[cm.dependent_key]
-                ll = cm.loglikelihood(y=observed_ts.y, x=predicted_ts.y, replicate_id=rid, dependent_key=cm.dependent_key)
-                if is_symbolic:
-                    L.append(ll)
-                else:
-                    L += ll
-        
+                ll = cm.loglikelihood(
+                    y=observed_ts.y, x=predicted_ts.y,
+                    replicate_id=rid, dependent_key=cm.dependent_key
+                ).sum()
+                L.append(ll)
+
         if is_symbolic:
-            return L
-        if numpy.isnan(L):
-            return numpy.inf
-        return -L
+            return symbolic.theano.tensor.sum(L)
+        else:
+            L = numpy.sum(L)
+            if numpy.isnan(L):
+                return numpy.inf
+            return -L
     return negative_loglikelihood_dataset

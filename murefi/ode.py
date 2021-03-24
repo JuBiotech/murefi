@@ -188,10 +188,20 @@ class BaseODEModel(object):
         if symbolic_mode:
             masks = template.get_observation_indices(list(template.keys()))
             # symbolically predict for all timepoints
-            y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, ode_parameters)
-            # and put the symbolic predictions into y_hat_all
-            for i, ikey in enumerate(self.independent_keys):
-                y_hat_all[ikey] = y_hat_tensor[i]
+            if symbolic.HAVE_SUNODE:
+                y_hat_all = symbolic.solve_sunode(
+                    self.dydt,
+                    self.independent_keys,
+                    y0,
+                    t,
+                    ode_parameters,
+                    self.parameter_names[self.n_y0:],
+                )
+            else:
+                y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, ode_parameters)
+                for i, ikey in enumerate(self.independent_keys):
+                    y_hat_all[ikey] = y_hat_tensor[i]
+            # y_hat_all is now a dictionary of symbolic predictions (full-length time)
         else:
             masks = template.get_observation_booleans(list(template.keys()))
             if S is None:
