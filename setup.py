@@ -1,3 +1,18 @@
+# Copyright 2020 Forschungszentrum Jülich GmbH
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import setuptools
 
 __packagename__ = 'murefi'
@@ -19,16 +34,21 @@ __version__ = get_version()
 setuptools.setup(name = __packagename__,
         packages = setuptools.find_packages(), # this must be the same as the name above
         version=__version__,
-        description='Package for fitting of multiple replicates of a bioprocess dataset.',
+        description='Package for multiple replicate fitting and Bayesian modeling.',
         url='https://jugit.fz-juelich.de/ibg-1/micropro/murefi',
         author='Laura Marie Helleckes, Michael Osthege',
         author_email='l.helleckes@fz-juelich.de, m.osthege@fz-juelich.de',
-        license='(c) 2020 Forschungszentrum Jülich GmbH',
+        license='GNU Affero General Public License v3',
         classifiers= [
             'Programming Language :: Python',
             'Operating System :: OS Independent',
             'Programming Language :: Python :: 3.7',
-            'Intended Audience :: Developers'
+            'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'License :: OSI Approved :: GNU Affero General Public License v3',
+            'Intended Audience :: Science/Research',
+            'Topic :: Scientific/Engineering',
+            'Topic :: Scientific/Engineering :: Mathematics',
         ],
         install_requires=[
             'pandas',
