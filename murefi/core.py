@@ -53,6 +53,9 @@ class ParameterMapping(object):
     def coords(self) -> typing.Dict[str, typing.Tuple[str]]:
         """ Groups the unique parameter ids by the kind of parameter.
 
+        Keys are in the form f"{pkind}_dim" to avoid conflicting with
+        random variable names (see https://github.com/arviz-devs/arviz/issues/1642).
+
         This dictionary can be used with pymc3.Model(coords=coords) to ease creation
         of vector-shaped priors.
         """
@@ -63,7 +66,7 @@ class ParameterMapping(object):
         for pname, pkind in self.parameters.items():
             raw_coords[pkind].append(pname)
         coords = {
-            pkind : tuple(pnames)
+            f"{pkind}_dim" : tuple(pnames)
             for pkind, pnames in raw_coords.items()
             if len(pnames) > 0
         }
@@ -146,7 +149,11 @@ class ParameterMapping(object):
         """
         coords = self.coords
         full_vec = tuple(
-            parameter_vectors[pkind][coords[pkind].index(pname)]
+            (
+                parameter_vectors[pkind][coords[f"{pkind}_dim"].index(pname)]
+                if pkind in parameter_vectors else
+                parameter_vectors[f"{pkind}_dim"][coords[f"{pkind}_dim"].index(pname)]
+            )
             for pname, pkind in self.parameters.items()
         )
         return full_vec
