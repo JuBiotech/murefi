@@ -716,21 +716,6 @@ class TestBaseODEModel:
                 assert numpy.shape(ts.y) == (S, len(dataset[rid][dkey]))
         pass
 
-    def test_attributes(self):
-        monod = murefi.MonodModel()
-        assert isinstance(monod, murefi.BaseODEModel)
-        assert isinstance(monod, murefi.MonodModel)
-        assert monod.n_y0 == 2
-        numpy.testing.assert_array_equal(monod.independent_keys, ['S', 'X'])
-    
-    def test_dydt(self):
-        monod = murefi.MonodModel()
-        y = numpy.array([0.1, 10])
-        t = 0
-        ode_parameters = numpy.array([0.5, 0.1, 0.5])
-        true = monod.dydt(y, t, ode_parameters)
-        expected = [-0.5, 0.25]
-
 
 class TestObjectives:
     def _prepare(self):
