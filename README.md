@@ -1,5 +1,7 @@
-[![pipeline status](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/badges/master/pipeline.svg)](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/commits/master)
-[![coverage report](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/badges/master/coverage.svg)](https://jugit.fz-juelich.de/IBG-1/micropro/murefi/commits/master)
+[![pipeline](https://github.com/lhelleckes/murefi/workflows/pipeline/badge.svg)](https://github.com/lhelleckes/murefi/actions)
 
-# murefi
+
+# `murefi`
+This package provides useful data structures and mapping objects for __mu__ lti-__re__ plicate __fi__ tting, mainly of ordinary differential euqation (ODE) models. 
+To see implementation examples & excercises, you can go to [notebooks/](notebooks).
 
