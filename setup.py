@@ -55,6 +55,6 @@ setuptools.setup(name = __packagename__,
             'numpy',
             'scipy',
             'h5py',
-            'calibr8>=5.0.3'
+            'calibr8>=6.0.0'
         ]
 )
