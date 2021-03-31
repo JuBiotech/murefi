@@ -1,0 +1,5 @@
+pandas
+numpy
+scipy
+h5py
+calibr8>=6.0.0
