@@ -1,8 +1,10 @@
 [![pipeline](https://github.com/lhelleckes/murefi/workflows/pipeline/badge.svg)](https://github.com/lhelleckes/murefi/actions)
 
+[![coverage](https://codecov.io/gh/jubiotech/murefi/branch/master/graph/badge.svg)](https://codecov.io/gh/jubiotech/murefi)
+[![documentation](https://readthedocs.org/projects/murefi/badge/?version=latest)](https://murefi.readthedocs.io/en/latest/?badge=latest)
 
 # `murefi`
-This package provides useful data structures and mapping objects for __mu__ lti-__re__ plicate __fi__ tting, mainly of ordinary differential euqation (ODE) models. 
+This package provides useful data structures and mapping objects for __mu__&#x200b;lti-__re__&#x200b;plicate __fi__&#x200b;tting, mainly of ordinary differential euqation (ODE) models. 
 To see implementation examples & excercises, you can go to [notebooks/](notebooks).
 
 # Documentation
