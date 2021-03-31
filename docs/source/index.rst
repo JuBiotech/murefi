@@ -2,11 +2,14 @@ Welcome to the ``murefi`` documentation!
 ========================================
 
 .. image:: https://img.shields.io/badge/code%20on-Github-lightgrey
-    :target: https://github.com/laurahelleckes/murefi
+    :target: https://github.com/jubiotech/murefi
+
+.. image:: https://zenodo.org/badge/353352505.svg
+   :target: https://zenodo.org/badge/latestdoi/353352505
 
 ``murefi`` is a Python package for **mu**\ lti **re**\ plicate **fi**\ tting, mostly for building ordinary differential equation (ODE) models.
 
-You can download the latest version from `GitHub <https://github.com/laurahelleckes/murefi>`_ or install it via ``pip install murefi``.
+You can download the latest version from `GitHub <https://github.com/jubiotech/murefi>`_ or install it via ``pip install murefi``.
 
 In the following examples, we introduce the data structures, basic concepts and modeling API.
 Here you can learn how a ``murefi``-driven modeling workflow looks like:
