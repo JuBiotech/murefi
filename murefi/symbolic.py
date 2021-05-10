@@ -106,7 +106,7 @@ class IntegrationOp(Op if HAVE_THEANO else object):
                         'No gradient defined through Python-wrapping IntegrationOp.')
                 for k, inp in enumerate(inputs)]
 
-    def infer_shape(self, node, input_shapes):
+    def infer_shape(self, fgraph, node, input_shapes):
         s_y0, s_x, s_theta = input_shapes
         output_shapes = [
             (s_y0[0],s_x[0])
