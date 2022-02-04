@@ -1,6 +1,7 @@
 import logging
+from typing import Any
+from typing_extensions import TypeAlias
 import numpy
-import pandas
 import base64
 import hashlib
 
@@ -8,32 +9,43 @@ import calibr8
 
 
 try:
-    import theano
-    if hasattr(theano, "gof"):
-        from theano import Apply, Op
-
-    else:
-        from theano.graph.op import Op
-        from theano.graph.basic import Apply
-    HAVE_THEANO = True
+    # Aesara
+    import aesara as _backend
+    from aesara.graph.op import Op
+    from aesara.graph.basic import Apply, Variable
+    import aesara.tensor as at
 except ModuleNotFoundError:
-    HAVE_THEANO = False
-    theano = calibr8.utils.ImportWarner('theano')
+    # Aesara is not available
+    try:
+        # Theano-PyMC 1.1.2
+        import theano as _backend
+        from theano.graph.op import Op
+        from theano.graph.basic import Apply, Variable
+        import theano.tensor as at
+    except ModuleNotFoundError:
+        _backend = calibr8.utils.ImportWarner("aesara")
+        at = calibr8.utils.ImportWarner("aesara")
+        Op = object
+        Apply: TypeAlias = Any
+        Variable: TypeAlias = Any
+
 
 try:
-    import pymc3
-    HAVE_PYMC3 = True
+    try:
+        import pymc as pm
+    except ModuleNotFoundError:
+        import pymc3 as pm
 except ModuleNotFoundError:
-    HAVE_PYMC3 = False
-    pymc3 = calibr8.utils.ImportWarner('pymc3')
+    pm = calibr8.utils.ImportWarner("pymc")
+
 
 try:
     import sunode
     import sunode.wrappers.as_theano
-    HAVE_SUNODE = True
+    HAS_SUNODE = True
 except ModuleNotFoundError:
-    HAVE_SUNODE = False
     sunode = calibr8.utils.ImportWarner('sunode')
+    HAS_SUNODE = False
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +69,7 @@ def make_hashable(obj):
     return obj
 
 
-class IntegrationOp(Op if HAVE_THEANO else object):
+class IntegrationOp(Op):
     """This is a theano Op that becomes a node in the computation graph.
     It is not differentiable, because it uses a 'solver' function that is provided by the user.
     """
@@ -78,14 +90,14 @@ class IntegrationOp(Op if HAVE_THEANO else object):
 
     def make_node(self, y0:list, t, theta:list):
         # NOTE: theano does not allow a list of tensors to be one of the inputs
-        #       that's why they have to be theano.tensor.stack()ed which also merges them into one dtype!
+        #       that's why they have to be at.stack()ed which also merges them into one dtype!
         # TODO: check dtypes and raise warnings
-        y0 = theano.tensor.stack([theano.tensor.as_tensor_variable(y) for y in y0])
-        theta = theano.tensor.stack([theano.tensor.as_tensor_variable(var) for var in theta])
-        t = theano.tensor.as_tensor_variable(t)
+        y0 = at.stack([at.as_tensor_variable(y) for y in y0])
+        theta = at.stack([at.as_tensor_variable(var) for var in theta])
+        t = at.as_tensor_variable(t)
         apply_node = Apply(self,
                             [y0, t, theta],     # symbolic inputs: y0 and theta
-                            [theano.tensor.dmatrix()])     # symbolic outputs: Y_hat
+                            [at.dmatrix()])     # symbolic outputs: Y_hat
         # NOTE: to support multiple different dtypes as transient variables, the
         #       output type would have to be a list of dvector/svectors.
         return apply_node
@@ -102,9 +114,13 @@ class IntegrationOp(Op if HAVE_THEANO else object):
         return
 
     def grad(self, inputs, outputs):
-        return [theano.gradient.grad_undefined(self, k, inp,
-                        'No gradient defined through Python-wrapping IntegrationOp.')
-                for k, inp in enumerate(inputs)]
+        return [
+            _backend.gradient.grad_undefined(
+                self, k, inp,
+                'No gradient defined through Python-wrapping IntegrationOp.'
+            )
+            for k, inp in enumerate(inputs)
+        ]
 
     def infer_shape(self, fgraph, node, input_shapes):
         s_y0, s_x, s_theta = input_shapes
@@ -121,9 +137,7 @@ def named_with_shapes_dict(vars, names):
         if calibr8.istensor(v):
             d[name] = (v, ())
         else:
-            #v = tt.as_tensor_variable(pymc3.floatX(v))
-            v = numpy.array(v).astype(theano.config.floatX)
-            d[name] = v
+            v = numpy.array(v).astype(_backend.config.floatX)
     return d
 
 

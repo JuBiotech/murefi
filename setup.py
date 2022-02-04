@@ -13,9 +13,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import pathlib
 import setuptools
 
 __packagename__ = 'murefi'
+ROOT = pathlib.Path(__file__).parent
+
 
 def get_version():
     import pathlib, re
@@ -50,11 +53,5 @@ setuptools.setup(name = __packagename__,
             'Topic :: Scientific/Engineering',
             'Topic :: Scientific/Engineering :: Mathematics',
         ],
-        install_requires=[
-            'pandas',
-            'numpy',
-            'scipy',
-            'h5py',
-            'calibr8>=6.0.0'
-        ]
+        install_requires=[open(pathlib.Path(ROOT, "requirements.txt")).readlines()],
 )

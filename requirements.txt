@@ -1,5 +1,6 @@
-pandas
-numpy
-scipy
+calibr8>=6.2.1
 h5py
-calibr8>=6.0.0
+numpy
+pandas
+scipy
+typing_extensions

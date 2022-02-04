@@ -49,7 +49,7 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
                 L.append(ll)
 
         if is_symbolic:
-            return symbolic.theano.tensor.sum(L)
+            return symbolic.at.sum(L)
         else:
             L = numpy.sum(L)
             if numpy.isnan(L):

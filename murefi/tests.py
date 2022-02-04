@@ -10,15 +10,10 @@ import tempfile
 
 import calibr8
 import murefi
+from murefi.symbolic import pm, _backend, at, sunode
 
-
-try:
-    import pymc3
-    import theano
-    import theano.tensor as tt
-    HAVE_PYMC3 = True
-except ModuleNotFoundError:
-    HAVE_PYMC3 = False
+HAS_PYMC = not isinstance(pm, calibr8.utils.ImportWarner)
+HAS_SUNODE = not isinstance(sunode, calibr8.utils.ImportWarner)
 
 
 dir_testfiles = pathlib.Path(pathlib.Path(__file__).absolute().parent, 'testfiles')
@@ -648,14 +643,14 @@ class TestBaseODEModel:
         mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-        assert pm.ndim == 6
+        pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        assert pmap.ndim == 6
 
         
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
-        numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
+        numpy.testing.assert_array_equal(tuple(pmap.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
-        prediction = model.predict_dataset(template=dataset, parameter_mapping=pm, parameters=theta)
+        prediction = model.predict_dataset(template=dataset, parameter_mapping=pmap, parameters=theta)
 
         assert isinstance(prediction, murefi.Dataset)
         assert 'R1' in prediction
@@ -672,7 +667,7 @@ class TestBaseODEModel:
         # test that it checks the order
         model.parameter_names = model.parameter_names[::-1]
         with pytest.raises(ValueError, match="order"):
-            model.predict_dataset(dataset, pm, theta)
+            model.predict_dataset(dataset, pmap, theta)
         return
 
     def test_predict_dataset_distribution(self):
@@ -687,11 +682,11 @@ class TestBaseODEModel:
         mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-        assert pm.ndim == 6
+        pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        assert pmap.ndim == 6
 
         # set a global parameter vector with alpha_1=0.22, alpha_2=0.24
-        numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
+        numpy.testing.assert_array_equal(tuple(pmap.parameters.keys()), 'A0,B0,C0,alpha_1,alpha_2,beta'.split(','))
         theta = [2., 2., 0.] + [0.22, 0.24, 0.85]
         # randomize the parameter vector into a matrix
         P = len(theta)
@@ -699,7 +694,7 @@ class TestBaseODEModel:
         theta = numpy.array(theta)[:,numpy.newaxis] + numpy.random.uniform(0, 0.1, size=(P, S))
         assert theta.shape == (P, S)
 
-        prediction = model.predict_dataset(template=dataset, parameter_mapping=pm, parameters=theta)
+        prediction = model.predict_dataset(template=dataset, parameter_mapping=pmap, parameters=theta)
         assert isinstance(prediction, murefi.Dataset)
         assert 'R1' in prediction
         assert 'R2' in prediction
@@ -734,15 +729,15 @@ class TestObjectives:
         mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
         mapping.loc['R1'] = 'A0,B0,C0,alpha_1,beta'.split(',')
         mapping.loc['R2'] = 'A0,B0,C0,alpha_2,beta'.split(',')
-        pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-        assert pm.ndim == 6
-        return model, dataset, pm
+        pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        assert pmap.ndim == 6
+        return model, dataset, pmap
 
     def test_for_dataset_creation(self):
-        model, dataset, pm = self._prepare()
-        assert pm.ndim == 6
+        model, dataset, pmap = self._prepare()
+        assert pmap.ndim == 6
 
-        obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+        obj = murefi.objectives.for_dataset(dataset, model, pmap, calibration_models=[
             _mini_calibration_model('A', 'A'),
             _mini_calibration_model('B', 'B'),
             _mini_calibration_model('C', 'C'),
@@ -756,12 +751,12 @@ class TestObjectives:
         pass
 
     def test_for_dataset_checks_theta_order(self):
-        model, dataset, pm = self._prepare()
+        model, dataset, pmap = self._prepare()
         
         # manipulate the order of parameters the model expects
         model.parameter_names = model.parameter_names[::-1]
         with pytest.raises(ValueError):
-            obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+            obj = murefi.objectives.for_dataset(dataset, model, pmap, calibration_models=[
                 _mini_calibration_model('A', 'A'),
                 _mini_calibration_model('B', 'B'),
                 _mini_calibration_model('C', 'C'),
@@ -769,13 +764,13 @@ class TestObjectives:
         pass
 
     def test_for_dataset_inf_on_nan(self):
-        model, dataset, pm = self._prepare()
-        assert pm.ndim == 6
+        model, dataset, pmap = self._prepare()
+        assert pmap.ndim == 6
 
         # manipulate an observation into NaN
         dataset['R1']['A'].y[0] = numpy.nan
 
-        obj = murefi.objectives.for_dataset(dataset, model, pm, calibration_models=[
+        obj = murefi.objectives.for_dataset(dataset, model, pmap, calibration_models=[
             _mini_calibration_model('A', 'A'),
             _mini_calibration_model('B', 'B'),
             _mini_calibration_model('C', 'C'),
@@ -790,16 +785,16 @@ class TestObjectives:
 
 
 class TestSymbolicComputation:
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_timeseries_support(self):
         t = numpy.linspace(0, 10, 10)
-        with theano.config.change_flags(compute_test_value='off'):
-            y = tt.scalar('TestY', dtype=theano.config.floatX)
-            assert isinstance(y, tt.TensorVariable)
+        with _backend.config.change_flags(compute_test_value='off'):
+            y = at.scalar('TestY', dtype=_backend.config.floatX)
+            assert isinstance(y, at.TensorVariable)
             ts = murefi.Timeseries(t, y, independent_key='Test', dependent_key='Test')
         return
 
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_symbolic_parameter_mapping(self, df_mapping):
         parmap = murefi.ParameterMapping(df_mapping, bounds=dict(
                 S_0=(1,2),
@@ -819,8 +814,8 @@ class TestSymbolicComputation:
         )
 
         # create a theta that is a mix of constant and symbolic variables
-        with theano.config.change_flags(compute_test_value='off'):
-            theta_fitted = [1, tt.scalar('mu_max', dtype=theano.config.floatX), 13, tt.scalar('t_acc', dtype=theano.config.floatX)]
+        with _backend.config.change_flags(compute_test_value='off'):
+            theta_fitted = [1, at.scalar('mu_max', dtype=_backend.config.floatX), 13, at.scalar('t_acc', dtype=_backend.config.floatX)]
 
             # map it to the two replicates
             expected = {
@@ -834,15 +829,15 @@ class TestSymbolicComputation:
                     if exp is not None:
                         assert exp == act
                     else:
-                        assert isinstance(act, tt.TensorVariable)
+                        assert isinstance(act, at.TensorVariable)
         return
 
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_symbolic_predict_replicate(self):
-        with theano.config.change_flags(compute_test_value='off'):
+        with _backend.config.change_flags(compute_test_value='off'):
             inputs = [
-                tt.scalar('beta', dtype=theano.config.floatX),
-                tt.scalar('A', dtype=theano.config.floatX)
+                at.scalar('beta', dtype=_backend.config.floatX),
+                at.scalar('A', dtype=_backend.config.floatX)
             ]
             ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -865,9 +860,9 @@ class TestSymbolicComputation:
             assert 'C1' in prediction
             assert 'C2' in prediction
             
-            assert isinstance(prediction['A'].y, tt.TensorVariable)
-            assert isinstance(prediction['C1'].y, tt.TensorVariable)
-            assert isinstance(prediction['C2'].y, tt.TensorVariable)
+            assert isinstance(prediction['A'].y, at.TensorVariable)
+            assert isinstance(prediction['C1'].y, at.TensorVariable)
+            assert isinstance(prediction['C2'].y, at.TensorVariable)
 
             outputs = [
                 prediction['A'].y,
@@ -876,7 +871,7 @@ class TestSymbolicComputation:
             ]
 
             # compile a theano function for performing the computation
-            f = theano.function(inputs, outputs)
+            f = _backend.function(inputs, outputs)
 
             # compute the model outcome
             actual = f(0.85, 2.0)
@@ -886,12 +881,12 @@ class TestSymbolicComputation:
             assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
     
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_symbolic_predict_dataset(self):
-        with theano.config.change_flags(compute_test_value='off'):
+        with _backend.config.change_flags(compute_test_value='off'):
             inputs = [
-                tt.scalar('beta', dtype=theano.config.floatX),
-                tt.scalar('A', dtype=theano.config.floatX)
+                at.scalar('beta', dtype=_backend.config.floatX),
+                at.scalar('A', dtype=_backend.config.floatX)
             ]
             ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -901,9 +896,9 @@ class TestSymbolicComputation:
             # create a parameter mapping
             mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
-            pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-            assert pm.ndim == 5
-            numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+            pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+            assert pmap.ndim == 5
+            numpy.testing.assert_array_equal(tuple(pmap.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
 
             # create a dataset
             ds_template = murefi.Dataset()
@@ -916,7 +911,7 @@ class TestSymbolicComputation:
             ds_template['TestRep'] = template
 
             # construct the symbolic computation graph
-            prediction = model.predict_dataset(ds_template, pm, parameters = y0 + ode_parameters)
+            prediction = model.predict_dataset(ds_template, pmap, parameters = y0 + ode_parameters)
 
             assert isinstance(prediction, murefi.Dataset)
             assert 'A' in prediction['TestRep']
@@ -924,9 +919,9 @@ class TestSymbolicComputation:
             assert 'C1' in prediction['TestRep']
             assert 'C2' in prediction['TestRep']
             
-            assert isinstance(prediction['TestRep']['A'].y, tt.TensorVariable)
-            assert isinstance(prediction['TestRep']['C1'].y, tt.TensorVariable)
-            assert isinstance(prediction['TestRep']['C2'].y, tt.TensorVariable)
+            assert isinstance(prediction['TestRep']['A'].y, at.TensorVariable)
+            assert isinstance(prediction['TestRep']['C1'].y, at.TensorVariable)
+            assert isinstance(prediction['TestRep']['C2'].y, at.TensorVariable)
 
             outputs = [
                 prediction['TestRep']['A'].y,
@@ -935,7 +930,7 @@ class TestSymbolicComputation:
             ]
 
             # compile a theano function for performing the computation
-            f = theano.function(inputs, outputs)
+            f = _backend.function(inputs, outputs)
 
             # compute the model outcome
             actual = f(0.85, 2.0)
@@ -945,14 +940,14 @@ class TestSymbolicComputation:
             assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
 
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_integration_op(self):
         model = _mini_model()
 
-        with pymc3.Model() as pmodel:
+        with pm.Model() as pmodel:
             inputs = [
-                pymc3.Uniform('beta', 0, 1),
-                pymc3.Uniform('A', 1, 3)
+                pm.Uniform('beta', 0, 1),
+                pm.Uniform('A', 1, 3)
             ]
             ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -961,10 +956,10 @@ class TestSymbolicComputation:
             op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
             outputs = op(y0, t, ode_parameters)
 
-            assert isinstance(outputs, tt.TensorVariable)
+            assert isinstance(outputs, at.TensorVariable)
 
             # compile a theano function for performing the computation
-            f = theano.function(inputs, outputs)
+            f = _backend.function(inputs, outputs)
 
             # compute the model outcome
             actual = f(0.83, 2.0)
@@ -975,12 +970,12 @@ class TestSymbolicComputation:
             assert numpy.allclose(actual[2], expected['C'])
         return
 
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_computation_graph_for_dataset(self):
-        with pymc3.Model() as pmodel:
+        with pm.Model() as pmodel:
             inputs = [
-                pymc3.Uniform('beta', 0, 1),
-                pymc3.Uniform('A', 1, 3)
+                pm.Uniform('beta', 0, 1),
+                pm.Uniform('A', 1, 3)
             ]
             ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2., 0.]
@@ -991,9 +986,9 @@ class TestSymbolicComputation:
             mapping = pandas.DataFrame(columns='rid,A0,B0,C0,alpha,beta'.split(',')).set_index('rid')
             mapping.loc['TestRep'] = 'A0,B0,C0,alpha,beta'.split(',')
             mapping.loc['TestRep2'] = 'A0,B0,C0,alpha,beta'.split(',')
-            pm = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-            assert pm.ndim == 5
-            numpy.testing.assert_array_equal(tuple(pm.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
+            pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+            assert pmap.ndim == 5
+            numpy.testing.assert_array_equal(tuple(pmap.parameters.keys()), 'A0,B0,C0,alpha,beta'.split(','))
 
             # create a dataset
             ds_template = murefi.Dataset()
@@ -1009,7 +1004,7 @@ class TestSymbolicComputation:
             template2['C1'] = murefi.Timeseries(t[2:4], [0]*2, independent_key='C', dependent_key='C1')
             ds_template['TestRep2'] = template2
             
-            objective = murefi.objectives.for_dataset(ds_template, model, pm, calibration_models=[
+            objective = murefi.objectives.for_dataset(ds_template, model, pmap, calibration_models=[
                     _mini_calibration_model('A', 'A'),
                     _mini_calibration_model('C', 'C2'),
                     _mini_calibration_model('C', 'C1'),
@@ -1020,7 +1015,7 @@ class TestSymbolicComputation:
 
         return
 
-    @pytest.mark.skipif(not HAVE_PYMC3, reason='requires PyMC3')
+    @pytest.mark.skipif(not HAS_PYMC, reason='requires PyMC3')
     def test_predict_replicate(self):
         t = numpy.linspace(0, 1, 5)
         model = _mini_model()
@@ -1034,20 +1029,16 @@ class TestSymbolicComputation:
 
         # mix of scalars, vectors, tensors
         with pytest.raises(murefi.DtypeError, match="incompatible"):
-            with pymc3.Model():
+            with pm.Model():
                 parameters = [1] * P
-                parameters[0] = pymc3.Uniform('u')
+                parameters[0] = pm.Uniform('u')
                 parameters[1] = numpy.ones(shape=(13,))
                 model.predict_replicate(template=template, parameters=parameters)
 
         # mix of tensor and scalars
-        with pymc3.Model():
+        with pm.Model():
             parameters = [1] * P
-            parameters[0] = pymc3.Uniform('u')
-            if murefi.symbolic.HAVE_SUNODE:
-                # Workaround for https://github.com/aseyboldt/sunode/issues/16
-                # is to include a free parameter in the ODE parameters:
-                parameters[-1] = pymc3.Normal("n", mu=1)
+            parameters[0] = pm.Uniform('u')
 
             rep = model.predict_replicate(template=template, parameters=parameters)
             for dkey in template.keys():
