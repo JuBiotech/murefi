@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Dict, Sequence, Tuple, Union
 from typing_extensions import TypeAlias
 import numpy
 import base64
@@ -130,7 +130,10 @@ class IntegrationOp(Op):
         return output_shapes
 
 
-def named_with_shapes_dict(vars, names):
+def named_with_shapes_dict(
+    vars: Dict[str, Union[numpy.ndarray, Variable]],
+    names: Sequence[str]
+) -> Dict[str, Tuple[Union[numpy.ndarray, Variable], Tuple[int, ...]]]:
     d = {}
     for n, name in enumerate(names):
         v = vars[n]
@@ -138,6 +141,7 @@ def named_with_shapes_dict(vars, names):
             d[name] = (v, ())
         else:
             v = numpy.array(v).astype(_backend.config.floatX)
+            d[name] = (v, numpy.shape(v))
     return d
 
 
@@ -165,7 +169,7 @@ def solve_sunode(
     y0 = named_with_shapes_dict(y0, independent_keys)
     params = named_with_shapes_dict(ode_parameters, parameter_names)
     params['extra'] = numpy.zeros(1)
-    solution, flat_solution, problem, sol, y0_flat, params_subs_flat, flat_sens, wrapper = sunode.wrappers.as_theano.solve_ivp(
+    solution, *_ = sunode.wrappers.as_theano.solve_ivp(
         y0=y0,
         params=params,
         rhs=dydt_dict,
