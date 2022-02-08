@@ -188,7 +188,7 @@ class BaseODEModel(object):
         if symbolic_mode:
             masks = template.get_observation_indices(list(template.keys()))
             # symbolically predict for all timepoints
-            if symbolic.HAVE_SUNODE:
+            if symbolic.HAS_SUNODE:
                 y_hat_all = symbolic.solve_sunode(
                     self.dydt,
                     self.independent_keys,

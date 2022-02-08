@@ -8,6 +8,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9]
+        pymc-version: ["without", "pymc==4.0.0b2", "pymc3"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -17,30 +18,29 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -e .
-        pip install flake8 pytest pytest-cov codecov wheel
+        pip install -r requirements-dev.txt
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --statistics
-    - name: Test with pytest
+    - name: Test without PyMC
+      if: matrix.pymc-version == 'without'
       run: |
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
-    - name: Install PyMC3
+    - name: Install and test with PyMC
+      if: matrix.pymc-version != 'without'
       run: |
-        pip install pymc3 
-    - name: Test with PyMC3
-      run: |
+        pip install ${{ matrix.pymc-version }}
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
-    - name: Install sunode
+    - name: Install and test with sunode
+      if: matrix.pymc-version != 'without'
       run : |
         conda install -c conda-forge sunode
-    - name: Test with sunode
-      run : |
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Upload coverage
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v2
       if: matrix.python-version == 3.8
       with:
         file: ./coverage.xml

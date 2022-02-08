@@ -19,22 +19,10 @@ jobs:
         python-version: 3.7
     - name: Install dependencies
       run: |
-        pip install -e . 
-        pip install flake8 pytest pytest-cov twine wheel
-    - name: Test with pytest
+        pip install -e .
+        pip install -r requirements-dev.txt
+    - name: Test without PyMC
       run: |
-        pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
-    - name: Install PyMC3 and PyGMO
-      run: |
-        pip install pymc3
-    - name: Test with PyMC3 
-      run: |
-        pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
-    - name: Install sunode
-      run : |
-        conda install -c conda-forge sunode
-    - name: Test with sunode
-      run : |
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Build package
       run: |

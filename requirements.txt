@@ -1,5 +1,8 @@
-pandas
-numpy
-scipy
+calibr8>=6.2.1
 h5py
-calibr8>=6.0.0
+numpy
+pandas
+
+# Pin SciPy until pymc>=4.0.0b is released
+scipy<1.8.0
+typing_extensions
