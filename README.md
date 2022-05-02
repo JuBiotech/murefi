@@ -5,7 +5,7 @@
 [![DOI](https://zenodo.org/badge/353352505.svg)](https://zenodo.org/badge/latestdoi/353352505)
 
 # `murefi`
-This package provides useful data structures and mapping objects for __mu__&#x200b;lti-__re__&#x200b;plicate __fi__&#x200b;tting, mainly of ordinary differential euqation (ODE) models. 
+This package provides useful data structures and mapping objects for __mu__&#x200b;lti-__re__&#x200b;plicate __fi__&#x200b;tting, mainly of ordinary differential euqation (ODE) models.
 To see implementation examples & excercises, you can go to [notebooks/](notebooks).
 
 # Installation
