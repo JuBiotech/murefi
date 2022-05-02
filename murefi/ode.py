@@ -1,17 +1,19 @@
 import abc
-import numpy
-import scipy.integrate
 import typing
 
 import calibr8
-from . core import ParameterMapping
-from . datastructures import Timeseries, Replicate, Dataset, DtypeError, ShapeError
+import numpy
+import scipy.integrate
+
 from . import symbolic
+from .core import ParameterMapping
+from .datastructures import Dataset, DtypeError, Replicate, ShapeError, Timeseries
 
 
 class BaseODEModel(object):
     """A dynamic model that uses ordinary differential equations."""
-    def __init__(self, parameter_names:tuple, independent_keys:tuple):
+
+    def __init__(self, parameter_names: tuple, independent_keys: tuple):
         """Create a dynamic model.
 
         Args:
@@ -25,19 +27,19 @@ class BaseODEModel(object):
             n_y0 (int): number of state variables
             n_ode_parameters (int): number of kinetic parameters
         """
-        self.parameter_names:tuple = tuple(parameter_names)
-        self.independent_keys:tuple = tuple(independent_keys)
+        self.parameter_names: tuple = tuple(parameter_names)
+        self.independent_keys: tuple = tuple(independent_keys)
         # derived from the inputs:
-        self.n_parameters:int = len(self.parameter_names)
-        self.n_y0:int = len(self.independent_keys)
-        self.n_ode_parameters:int = self.n_parameters - self.n_y0
+        self.n_parameters: int = len(self.parameter_names)
+        self.n_y0: int = len(self.independent_keys)
+        self.n_ode_parameters: int = self.n_parameters - self.n_y0
         super().__init__()
 
     @abc.abstractmethod
     def dydt(self, y, t, ode_parameters):
         """First derivative of the transient variables.
         Needs to be overridden by subclasses.
-        
+
         Args:
             y (array): current state of the system (n_y0,)
             t (float): time since intial state
@@ -47,7 +49,7 @@ class BaseODEModel(object):
         """
         raise NotImplementedError()
 
-    def solver(self, y0, t, ode_parameters) -> dict:   
+    def solver(self, y0, t, ode_parameters) -> dict:
         """Solves the dynamic system for all T timepoints in t.
         Uses scipy.integrate.odeint and self.dydt to solve the system.
 
@@ -64,17 +66,14 @@ class BaseODEModel(object):
         concat_zero = t[0] != 0
         if concat_zero:
             t = numpy.concatenate(([0], t))
-        y = scipy.integrate.odeint(self.dydt, y0, t, (ode_parameters,)) 
+        y = scipy.integrate.odeint(self.dydt, y0, t, (ode_parameters,))
         # slicing and dict-conversion are dimensionality-agnostic
         if concat_zero:
             y = y[1:]
-        y_hat_dict = {
-            key : y[:,i]
-            for i, key in enumerate(self.independent_keys)
-        }
+        y_hat_dict = {key: y[:, i] for i, key in enumerate(self.independent_keys)}
         return y_hat_dict
 
-    def solver_vectorized(self, y0, t, ode_parameters) -> dict:   
+    def solver_vectorized(self, y0, t, ode_parameters) -> dict:
         """Solves the dynamic system for all T timepoints in t with many parameter sets.
         Uses scipy.integrate.odeint and self.dydt to solve the system.
 
@@ -96,9 +95,15 @@ class BaseODEModel(object):
         ode_parameters_shape = numpy.shape(ode_parameters)
 
         if y0_shape[0] != self.n_y0 or len(y0_shape) != 2:
-            raise ShapeError('Invalid shape of initial states [y0].', actual=y0_shape, expected=f'({self.n_y0}, ?)')
+            raise ShapeError(
+                "Invalid shape of initial states [y0].", actual=y0_shape, expected=f"({self.n_y0}, ?)"
+            )
         if ode_parameters_shape[0] != self.n_ode_parameters or len(ode_parameters_shape) != 2:
-            raise ShapeError('Invalid shape of model parameters [ode_parameters].', actual=ode_parameters_shape, expected=f'({self.n_ode_parameters}, ?)')
+            raise ShapeError(
+                "Invalid shape of model parameters [ode_parameters].",
+                actual=ode_parameters_shape,
+                expected=f"({self.n_ode_parameters}, ?)",
+            )
 
         # there are many parametersets
         N_parametersets = y0_shape[1]
@@ -108,24 +113,21 @@ class BaseODEModel(object):
         y = numpy.empty(shape=(len(t), self.n_y0, y0_shape[1]))
         # predict with each parameter set
         for s in range(N_parametersets):
-            y[:,:,s] = scipy.integrate.odeint(self.dydt, y0[:,s], t, (ode_parameters[:,s],)) 
+            y[:, :, s] = scipy.integrate.odeint(self.dydt, y0[:, s], t, (ode_parameters[:, s],))
 
         # slice out augmented t0 timepoint and return as dict
         if concat_zero:
             y = y[1:]
-        y_hat_dict = {
-            key : y[:,i]
-            for i, key in enumerate(self.independent_keys)
-        }
+        y_hat_dict = {key: y[:, i] for i, key in enumerate(self.independent_keys)}
         return y_hat_dict
-    
-    def predict_replicate(self, parameters:typing.Sequence, template:Replicate) -> Replicate:
+
+    def predict_replicate(self, parameters: typing.Sequence, template: Replicate) -> Replicate:
         """Simulates an experiment that is comparable to the Replicate template.
         Supports symbolic prediction and vectorized prediction from a matrix of parameters.
 
         Args:
             parameters (array-like):
-                The [parameters] sequence must be a tuple, list or numpy.ndarray, with the elements 
+                The [parameters] sequence must be a tuple, list or numpy.ndarray, with the elements
                 being a concatenation of y0 and ode_parameters.
 
                 Symbolic prediction requires a (n_parameters,) parameter vector of type {tuple, list, numpy.ndarray}.
@@ -141,12 +143,16 @@ class BaseODEModel(object):
         """
         # check inputs (basic)
         if not isinstance(template, Replicate):
-            raise ValueError('A template Replicate must be provided!')
+            raise ValueError("A template Replicate must be provided!")
         if not isinstance(parameters, (tuple, list, numpy.ndarray)):
-            raise DtypeError('The provided [parameters] have the wrong type.', actual=type(parameters), expected='list, tuple or numpy.ndarray')
+            raise DtypeError(
+                "The provided [parameters] have the wrong type.",
+                actual=type(parameters),
+                expected="list, tuple or numpy.ndarray",
+            )
         P = len(parameters)
         if P != self.n_parameters:
-            raise ShapeError('Invalid number of parameters.', actual=P, expected=self.n_parameters)
+            raise ShapeError("Invalid number of parameters.", actual=P, expected=self.n_parameters)
 
         # check that all parameters are either scalar, or (S,) vectors
         S = None
@@ -156,25 +162,26 @@ class BaseODEModel(object):
             pshape = numpy.shape(pval)
             if pdim == 1:
                 if S is not None and pshape[0] != S:
-                    raise ShapeError(f'Lenght of parameter values for {pname} is inconsistent with other parameters.')
+                    raise ShapeError(
+                        f"Lenght of parameter values for {pname} is inconsistent with other parameters."
+                    )
                 S = pshape[0]
             elif pdim > 1:
                 raise ShapeError(
                     f'Entry for "{pname}" entry is more than 1-dimensional.',
                     actual=pshape,
-                    expected='() or (?,)' if S is None else f'() or ({S},)'
+                    expected="() or (?,)" if S is None else f"() or ({S},)",
                 )
         if symbolic_mode and S is not None:
             raise DtypeError(
-                'Symbolic prediction and numeric prediction of distributions are incompatible with each other. '
-                'The [parameters] contained Tensors and vector-valued entries at the same time.'
+                "Symbolic prediction and numeric prediction of distributions are incompatible with each other. "
+                "The [parameters] contained Tensors and vector-valued entries at the same time."
             )
 
         # if any parameter entry is a vector, all must be vectors
         if S is not None:
             parameters = tuple(
-                numpy.repeat(pars, S) if numpy.ndim(pars) == 0 else numpy.array(pars)
-                for pars in parameters
+                numpy.repeat(pars, S) if numpy.ndim(pars) == 0 else numpy.array(pars) for pars in parameters
             )
 
         # at this point, `parameters` is a tuple of either (symbolic) scalars, or (S,) vectors
@@ -182,8 +189,8 @@ class BaseODEModel(object):
 
         # predictions are made for all timepoints and sliced to match the template
         t = template.t_any
-        y0 = parameters[:self.n_y0]
-        ode_parameters = parameters[self.n_y0:]
+        y0 = parameters[: self.n_y0]
+        ode_parameters = parameters[self.n_y0 :]
         y_hat_all = {}
         if symbolic_mode:
             masks = template.get_observation_indices(list(template.keys()))
@@ -195,10 +202,12 @@ class BaseODEModel(object):
                     y0,
                     t,
                     ode_parameters,
-                    self.parameter_names[self.n_y0:],
+                    self.parameter_names[self.n_y0 :],
                 )
             else:
-                y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(y0, t, ode_parameters)
+                y_hat_tensor = symbolic.IntegrationOp(self.solver, self.independent_keys)(
+                    y0, t, ode_parameters
+                )
                 for i, ikey in enumerate(self.independent_keys):
                     y_hat_all[ikey] = y_hat_tensor[i]
             # y_hat_all is now a dictionary of symbolic predictions (full-length time)
@@ -218,13 +227,18 @@ class BaseODEModel(object):
             mask = masks[dependent_key]
             pred[dependent_key] = Timeseries(
                 t=template_ts.t,
-                y=y_hat_all[independent_key][mask,...].T,
+                y=y_hat_all[independent_key][mask, ...].T,
                 independent_key=independent_key,
-                dependent_key=dependent_key
+                dependent_key=dependent_key,
             )
         return pred
-        
-    def predict_dataset(self, template:Dataset, parameter_mapping:ParameterMapping, parameters:typing.Union[typing.Sequence, dict]):
+
+    def predict_dataset(
+        self,
+        template: Dataset,
+        parameter_mapping: ParameterMapping,
+        parameters: typing.Union[typing.Sequence, dict],
+    ):
         """Simulates an experiment that is comparable to the Dataset template.
         Args:
             parameter_mapping (ParameterMapping):
@@ -237,10 +251,10 @@ class BaseODEModel(object):
         Returns:
             prediction (Dataset): prediction result
         """
-        assert not template is None, 'A template must be provided!'
+        assert not template is None, "A template must be provided!"
         if not parameter_mapping.order == self.parameter_names:
-            raise ValueError('The parameter order must be compatible with the model!')
-        
+            raise ValueError("The parameter order must be compatible with the model!")
+
         prediction = Dataset()
         parameters_mapped = parameter_mapping.repmap(parameters)
 

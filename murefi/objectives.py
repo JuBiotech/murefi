@@ -1,16 +1,22 @@
-import numpy
 import typing
 
 import calibr8
-from . core import ParameterMapping
-from . datastructures import Timeseries, Replicate, Dataset
-from . ode import BaseODEModel
+import numpy
+
 from . import symbolic
+from .core import ParameterMapping
+from .datastructures import Dataset, Replicate, Timeseries
+from .ode import BaseODEModel
 
 
-def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: ParameterMapping, calibration_models: typing.Iterable[calibr8.CalibrationModel]):
+def for_dataset(
+    dataset: Dataset,
+    model: BaseODEModel,
+    parameter_mapping: ParameterMapping,
+    calibration_models: typing.Iterable[calibr8.CalibrationModel],
+):
     """Creates an objective function for fitting a Dataset
-    
+
     Args:
         dataset: Dataset object for which the parameters should be fitted.
         model (BaseODEModel): ODE model
@@ -21,10 +27,12 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
         objective: callable that takes a full parameter vector and returns the negative log-likelihood
     """
     if not parameter_mapping.order == model.parameter_names:
-        raise ValueError(f'The parameter order in the mapping does not match with the model! ({parameter_mapping.order} != {model.parameter_names})')
-    
+        raise ValueError(
+            f"The parameter order in the mapping does not match with the model! ({parameter_mapping.order} != {model.parameter_names})"
+        )
+
     mappings = {
-        rid : [
+        rid: [
             # pairs of CalibrationModel and observed Timeseries
             (cm, rep_obs[cm.dependent_key])
             for cm in calibration_models
@@ -32,7 +40,7 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
         ]
         for rid, rep_obs in dataset.items()
     }
-    
+
     def negative_loglikelihood_dataset(theta):
         is_symbolic = calibr8.istensor(theta)
         L = []
@@ -43,8 +51,7 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
             for (cm, observed_ts) in em_ts_list:
                 predicted_ts = predicted_replicate[cm.dependent_key]
                 ll = cm.loglikelihood(
-                    y=observed_ts.y, x=predicted_ts.y,
-                    replicate_id=rid, dependent_key=cm.dependent_key
+                    y=observed_ts.y, x=predicted_ts.y, replicate_id=rid, dependent_key=cm.dependent_key
                 ).sum()
                 L.append(ll)
 
@@ -55,4 +62,5 @@ def for_dataset(dataset: Dataset, model: BaseODEModel, parameter_mapping: Parame
             if numpy.isnan(L):
                 return numpy.inf
             return -L
+
     return negative_loglikelihood_dataset

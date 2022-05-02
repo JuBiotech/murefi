@@ -1,14 +1,13 @@
 import collections
 import logging
-import numpy
-import pandas
 import typing
 import warnings
 
 import calibr8
+import numpy
+import pandas
 
-from . datastructures import ShapeError
-
+from .datastructures import ShapeError
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ class ParameterMapping(object):
     def order(self) -> tuple:
         """Names of the model parameters"""
         return self._order
-        
+
     @property
     def parameters(self) -> collections.OrderedDict:
         """Maps unique parameters to the names of the corresponding model parameters."""
@@ -33,7 +32,7 @@ class ParameterMapping(object):
     def ndim(self) -> int:
         """Dimensionality of the parameterization"""
         return len(self.parameters)
-        
+
     @property
     def bounds(self) -> tuple:
         """(lower, upper) tuples for all parameters"""
@@ -51,7 +50,7 @@ class ParameterMapping(object):
 
     @property
     def coords(self) -> typing.Dict[str, typing.Tuple[str]]:
-        """ Groups the unique parameter ids by the kind of parameter.
+        """Groups the unique parameter ids by the kind of parameter.
 
         Keys are in the form f"{pkind}_dim" to avoid conflicting with
         random variable names (see https://github.com/arviz-devs/arviz/issues/1642).
@@ -59,24 +58,17 @@ class ParameterMapping(object):
         This dictionary can be used with pymc3.Model(coords=coords) to ease creation
         of vector-shaped priors.
         """
-        raw_coords = {
-            pkind : []
-            for pkind in self.order
-        }
+        raw_coords = {pkind: [] for pkind in self.order}
         for pname, pkind in self.parameters.items():
             raw_coords[pkind].append(pname)
-        coords = {
-            f"{pkind}_dim" : tuple(pnames)
-            for pkind, pnames in raw_coords.items()
-            if len(pnames) > 0
-        }
+        coords = {f"{pkind}_dim": tuple(pnames) for pkind, pnames in raw_coords.items() if len(pnames) > 0}
         return coords
 
-    def __init__(self, mapping:pandas.DataFrame, *, bounds:dict, guesses:dict):
+    def __init__(self, mapping: pandas.DataFrame, *, bounds: dict, guesses: dict):
         """Helper object for mapping a global parameter vector to replicate-wise model parameters.
-        
+
         The order of parameter columns will be preserved.
-        
+
         Args:
             mapping (pandas.DataFrame): dataframe of parameter settings (replicate ids in rows, parameters in columns)
             bounds (dict): dictionary of customized bounds (unique parameter names > dimension names > None)
@@ -98,32 +90,31 @@ class ParameterMapping(object):
         for r, id in enumerate(mapping.index):
             for c, pname in enumerate(mapping.columns):
                 v = mapping.loc[id, pname]
-                if not str(v).replace('.', '', 1).isdigit():
+                if not str(v).replace(".", "", 1).isdigit():
                     if v in _parameters and _parameters[v] != pname:
-                        raise ValueError(f'Unique parameter {v} is used in different model parameters.')
+                        raise ValueError(f"Unique parameter {v} is used in different model parameters.")
                     _parameters[v] = pname
-        self._parameters = collections.OrderedDict([
-            (key, _parameters[key])
-            for key in sorted(_parameters.keys())
-        ])
-        
-        self._bounds = tuple([
-            bounds[pkey] if pkey in bounds else
-            bounds[pdim] if pdim in bounds else
-            (None, None)
-            for pkey, pdim in self.parameters.items()
-        ])
+        self._parameters = collections.OrderedDict(
+            [(key, _parameters[key]) for key in sorted(_parameters.keys())]
+        )
 
-        self._guesses = tuple([
-            guesses[pkey] if pkey in guesses else
-            guesses[pdim] if pdim in guesses else
-            None
-            for pkey, pdim in self.parameters.items()
-        ])
+        self._bounds = tuple(
+            [
+                bounds[pkey] if pkey in bounds else bounds[pdim] if pdim in bounds else (None, None)
+                for pkey, pdim in self.parameters.items()
+            ]
+        )
+
+        self._guesses = tuple(
+            [
+                guesses[pkey] if pkey in guesses else guesses[pdim] if pdim in guesses else None
+                for pkey, pdim in self.parameters.items()
+            ]
+        )
 
         self._mapping = {
-            key : tuple(
-                float(v) if str(v).replace('.', '', 1).isdigit() else str(v)
+            key: tuple(
+                float(v) if str(v).replace(".", "", 1).isdigit() else str(v)
                 for v in [mapping.loc[key, pname] for pname in self.order]
             )
             for key in mapping.index
@@ -131,7 +122,7 @@ class ParameterMapping(object):
         super().__init__()
 
     def merge_vectors(self, parameter_vectors: typing.Dict[str, typing.Sequence]) -> tuple:
-        """ Creates a full length (ndim,) parameter vector from a dictionary of
+        """Creates a full length (ndim,) parameter vector from a dictionary of
         parameter vectors.
 
         Arguments
@@ -151,15 +142,15 @@ class ParameterMapping(object):
         full_vec = tuple(
             (
                 parameter_vectors[pkind][coords[f"{pkind}_dim"].index(pname)]
-                if pkind in parameter_vectors else
-                parameter_vectors[f"{pkind}_dim"][coords[f"{pkind}_dim"].index(pname)]
+                if pkind in parameter_vectors
+                else parameter_vectors[f"{pkind}_dim"][coords[f"{pkind}_dim"].index(pname)]
             )
             for pname, pkind in self.parameters.items()
         )
         return full_vec
 
     def as_dataframe(self) -> pandas.DataFrame:
-        """ Re-creates the DataFrame representation of this parameter mapping.
+        """Re-creates the DataFrame representation of this parameter mapping.
 
         It is NOT the identical DataFrame object it was initialized from!
         """
@@ -168,7 +159,7 @@ class ParameterMapping(object):
         df_mapping.columns = self.order
         return df_mapping
 
-    def repmap(self, theta_full:typing.Union[typing.Sequence, dict]) -> typing.Dict[str, typing.Sequence]:
+    def repmap(self, theta_full: typing.Union[typing.Sequence, dict]) -> typing.Dict[str, typing.Sequence]:
         """Remaps a full parameter vector to a dictionary of replicate-wise parameters.
 
         Args:
@@ -189,20 +180,21 @@ class ParameterMapping(object):
         if isinstance(theta_full, dict):
             missing_parameters = set(self.parameters.keys()).difference(set(theta_full.keys()))
             if missing_parameters:
-                raise KeyError(f'Parameters {missing_parameters} are missing from [theta_full].')
+                raise KeyError(f"Parameters {missing_parameters} are missing from [theta_full].")
             pname_to_pvalue = theta_full
         else:
             if not len(theta_full) == len(self.parameters):
-                raise ShapeError('[theta_full] does not match with the parameter mapping.', actual=(len(theta_full),), expected=(len(self.parameters),))
+                raise ShapeError(
+                    "[theta_full] does not match with the parameter mapping.",
+                    actual=(len(theta_full),),
+                    expected=(len(self.parameters),),
+                )
             for p, pname in enumerate(self.parameters):
                 pname_to_pvalue[pname] = theta_full[p]
 
         # iterate over the mapping to collect replicate-wise parameters
         theta_dict = {
-            rkey : tuple([
-                pname_to_pvalue[pname] if isinstance(pname, str) else pname
-                for pname in pnames
-            ])
+            rkey: tuple([pname_to_pvalue[pname] if isinstance(pname, str) else pname for pname in pnames])
             for rkey, pnames in self.mapping.items()
         }
         return theta_dict

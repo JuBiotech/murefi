@@ -14,44 +14,49 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pathlib
+
 import setuptools
 
-__packagename__ = 'murefi'
+__packagename__ = "murefi"
 ROOT = pathlib.Path(__file__).parent
 
 
 def get_version():
-    import pathlib, re
-    VERSIONFILE = pathlib.Path(pathlib.Path(__file__).parent, __packagename__, '__init__.py')
-    initfile_lines = open(VERSIONFILE, 'rt').readlines()
+    import pathlib
+    import re
+
+    VERSIONFILE = pathlib.Path(pathlib.Path(__file__).parent, __packagename__, "__init__.py")
+    initfile_lines = open(VERSIONFILE, "rt").readlines()
     VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
     for line in initfile_lines:
         mo = re.search(VSRE, line, re.M)
         if mo:
             return mo.group(1)
-    raise RuntimeError('Unable to find version string in %s.' % (VERSIONFILE,))
+    raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+
 
 __version__ = get_version()
 
 
-setuptools.setup(name = __packagename__,
-        packages = setuptools.find_packages(), # this must be the same as the name above
-        version=__version__,
-        description='Package for multiple replicate fitting and Bayesian modeling.',
-        url='https://github.com/JuBiotech/murefi',
-        author='Laura Marie Helleckes, Michael Osthege',
-        author_email='l.helleckes@fz-juelich.de, m.osthege@fz-juelich.de',
-        license='GNU Affero General Public License v3',
-        classifiers= [
-            'Programming Language :: Python',
-            'Operating System :: OS Independent',
-            'Programming Language :: Python :: 3.7',
-            'Programming Language :: Python :: 3.8',
-            'Programming Language :: Python :: 3.9',
-            'License :: OSI Approved :: GNU Affero General Public License v3',
-            'Intended Audience :: Science/Research',
-            'Topic :: Scientific/Engineering',
-            'Topic :: Scientific/Engineering :: Mathematics',
-        ],
-        install_requires=[open(pathlib.Path(ROOT, "requirements.txt")).readlines()],
+setuptools.setup(
+    name=__packagename__,
+    packages=setuptools.find_packages(),  # this must be the same as the name above
+    version=__version__,
+    description="Package for multiple replicate fitting and Bayesian modeling.",
+    url="https://github.com/JuBiotech/murefi",
+    author="Laura Marie Helleckes, Michael Osthege",
+    author_email="l.helleckes@fz-juelich.de, m.osthege@fz-juelich.de",
+    license="GNU Affero General Public License v3",
+    classifiers=[
+        "Programming Language :: Python",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Mathematics",
+    ],
+    install_requires=[open(pathlib.Path(ROOT, "requirements.txt")).readlines()],
 )
