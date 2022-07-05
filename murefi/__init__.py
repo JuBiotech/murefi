@@ -11,4 +11,4 @@ from .datastructures import (
 )
 from .ode import BaseODEModel
 
-__version__ = "5.1.0"
+__version__ = "5.1.1"
