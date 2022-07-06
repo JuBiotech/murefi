@@ -246,7 +246,12 @@ class Dataset(collections.OrderedDict):
 
     @staticmethod
     def make_template_like(
-        dataset, independent_keys: typing.Iterable[str], *, N: int = 200, tmin: typing.Optional[float] = None
+        dataset,
+        independent_keys: typing.Iterable[str],
+        *,
+        N: int = 200,
+        tmin: typing.Optional[float] = None,
+        tmax: typing.Optional[float] = None,
     ):
         """Create a dense template Dataset that has the same start and end times as another Dataset.
 
@@ -255,6 +260,7 @@ class Dataset(collections.OrderedDict):
             independent_keys (list): list of independent variable keys to include in the template
             N (int): total number of timepoints (default: 200)
             tmin (float, optional): override for the start time (when tmin=None, the first timepoint of the template replicate is used)
+            tmax (float): override for the last timepoint
 
         Returns:
             dataset (Dataset): dataset object containing Replicates with dense timeseries of random y data
@@ -263,7 +269,7 @@ class Dataset(collections.OrderedDict):
         for rid, rep in dataset.items():
             ds[rid] = Replicate.make_template(
                 tmin=rep.t_any[0] if tmin is None else tmin,
-                tmax=rep.t_max,
+                tmax=rep.t_max if tmax is None else tmax,
                 independent_keys=independent_keys,
                 rid=rid,
                 N=N,
