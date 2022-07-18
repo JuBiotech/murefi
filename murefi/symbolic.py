@@ -40,7 +40,7 @@ except ModuleNotFoundError:
 
 try:
     import sunode
-    import sunode.wrappers.as_theano
+    from sunode.wrappers import as_aesara
 
     HAS_SUNODE = True
 except ModuleNotFoundError:
@@ -154,13 +154,13 @@ def solve_sunode(
     y0 = named_with_shapes_dict(y0, independent_keys)
     params = named_with_shapes_dict(ode_parameters, parameter_names)
     params["extra"] = numpy.zeros(1)
-    solution, *_ = sunode.wrappers.as_theano.solve_ivp(
+    solution, *_ = as_aesara.solve_ivp(
         y0=y0,
         params=params,
         rhs=dydt_dict,
         tvals=t,
         t0=t[0],
         derivatives="forward",
-        solver_kwargs=dict(sens_mode="simultaneous", compute_sens=True),
+        solver_kwargs=dict(sens_mode="simultaneous"),
     )
     return solution
