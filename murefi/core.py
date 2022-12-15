@@ -3,8 +3,6 @@ import logging
 import typing
 import warnings
 
-import calibr8
-import numpy
 import pandas
 
 from .datastructures import ShapeError

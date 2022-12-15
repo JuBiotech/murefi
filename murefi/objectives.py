@@ -5,7 +5,7 @@ import numpy
 
 from . import symbolic
 from .core import ParameterMapping
-from .datastructures import Dataset, Replicate, Timeseries
+from .datastructures import Dataset
 from .ode import BaseODEModel
 
 

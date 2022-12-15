@@ -7,8 +7,6 @@ import h5py
 import numpy
 import pandas
 import pytest
-import scipy.integrate
-import scipy.stats as stats
 
 import murefi
 from murefi.symbolic import _backend, at, pm, sunode
