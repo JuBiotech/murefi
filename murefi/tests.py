@@ -9,7 +9,7 @@ import pandas
 import pytest
 
 import murefi
-from murefi.symbolic import _backend, at, pm, sunode
+from murefi.symbolic import _backend, pm, pt, sunode
 
 HAS_PYMC = not isinstance(pm, calibr8.utils.ImportWarner)
 HAS_SUNODE = not isinstance(sunode, calibr8.utils.ImportWarner)
@@ -796,16 +796,16 @@ class TestObjectives:
 
 
 class TestSymbolicComputation:
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_timeseries_support(self):
         t = numpy.linspace(0, 10, 10)
         with _backend.config.change_flags(compute_test_value="off"):
-            y = at.scalar("TestY", dtype=_backend.config.floatX)
-            assert isinstance(y, at.TensorVariable)
+            y = pt.scalar("TestY", dtype=_backend.config.floatX)
+            assert isinstance(y, pt.TensorVariable)
             ts = murefi.Timeseries(t, y, independent_key="Test", dependent_key="Test")
         return
 
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_symbolic_parameter_mapping(self, df_mapping):
         parmap = murefi.ParameterMapping(
             df_mapping,
@@ -817,9 +817,9 @@ class TestSymbolicComputation:
         with _backend.config.change_flags(compute_test_value="off"):
             theta_fitted = [
                 1,
-                at.scalar("mu_max", dtype=_backend.config.floatX),
+                pt.scalar("mu_max", dtype=_backend.config.floatX),
                 13,
-                at.scalar("t_acc", dtype=_backend.config.floatX),
+                pt.scalar("t_acc", dtype=_backend.config.floatX),
             ]
 
             # map it to the two replicates
@@ -834,15 +834,15 @@ class TestSymbolicComputation:
                     if exp is not None:
                         assert exp == act
                     else:
-                        assert isinstance(act, at.TensorVariable)
+                        assert isinstance(act, pt.TensorVariable)
         return
 
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_symbolic_predict_replicate(self):
         with _backend.config.change_flags(compute_test_value="off"):
             inputs = [
-                at.scalar("beta", dtype=_backend.config.floatX),
-                at.scalar("A", dtype=_backend.config.floatX),
+                pt.scalar("beta", dtype=_backend.config.floatX),
+                pt.scalar("A", dtype=_backend.config.floatX),
             ]
             ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2.0, 0.0]
@@ -865,13 +865,13 @@ class TestSymbolicComputation:
             assert "C1" in prediction
             assert "C2" in prediction
 
-            assert isinstance(prediction["A"].y, at.TensorVariable)
-            assert isinstance(prediction["C1"].y, at.TensorVariable)
-            assert isinstance(prediction["C2"].y, at.TensorVariable)
+            assert isinstance(prediction["A"].y, pt.TensorVariable)
+            assert isinstance(prediction["C1"].y, pt.TensorVariable)
+            assert isinstance(prediction["C2"].y, pt.TensorVariable)
 
             outputs = [prediction["A"].y, prediction["C1"].y, prediction["C2"].y]
 
-            # compile a theano function for performing the computation
+            # compile a PyTensor function for performing the computation
             f = _backend.function(inputs, outputs)
 
             # compute the model outcome
@@ -882,12 +882,12 @@ class TestSymbolicComputation:
             assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
 
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_symbolic_predict_dataset(self):
         with _backend.config.change_flags(compute_test_value="off"):
             inputs = [
-                at.scalar("beta", dtype=_backend.config.floatX),
-                at.scalar("A", dtype=_backend.config.floatX),
+                pt.scalar("beta", dtype=_backend.config.floatX),
+                pt.scalar("A", dtype=_backend.config.floatX),
             ]
             ode_parameters = [0.23, inputs[0]]
             y0 = [inputs[1], 2.0, 0.0]
@@ -920,9 +920,9 @@ class TestSymbolicComputation:
             assert "C1" in prediction["TestRep"]
             assert "C2" in prediction["TestRep"]
 
-            assert isinstance(prediction["TestRep"]["A"].y, at.TensorVariable)
-            assert isinstance(prediction["TestRep"]["C1"].y, at.TensorVariable)
-            assert isinstance(prediction["TestRep"]["C2"].y, at.TensorVariable)
+            assert isinstance(prediction["TestRep"]["A"].y, pt.TensorVariable)
+            assert isinstance(prediction["TestRep"]["C1"].y, pt.TensorVariable)
+            assert isinstance(prediction["TestRep"]["C2"].y, pt.TensorVariable)
 
             outputs = [
                 prediction["TestRep"]["A"].y,
@@ -930,7 +930,7 @@ class TestSymbolicComputation:
                 prediction["TestRep"]["C2"].y,
             ]
 
-            # compile a theano function for performing the computation
+            # compile a PyTensor function for performing the computation
             f = _backend.function(inputs, outputs)
 
             # compute the model outcome
@@ -941,7 +941,7 @@ class TestSymbolicComputation:
             assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
 
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_integration_op(self):
         model = _mini_model()
 
@@ -954,9 +954,9 @@ class TestSymbolicComputation:
             op = murefi.symbolic.IntegrationOp(model.solver, model.independent_keys)
             outputs = op(y0, t, ode_parameters)
 
-            assert isinstance(outputs, at.TensorVariable)
+            assert isinstance(outputs, pt.TensorVariable)
 
-            # compile a theano function for performing the computation
+            # compile a PyTensor function for performing the computation
             f = _backend.function(inputs, outputs)
 
             # compute the model outcome
@@ -968,7 +968,7 @@ class TestSymbolicComputation:
             assert numpy.allclose(actual[2], expected["C"])
         return
 
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_computation_graph_for_dataset(self):
         with pm.Model() as pmodel:
             inputs = [pm.Uniform("beta", 0, 1), pm.Uniform("A", 1, 3)]
@@ -1015,7 +1015,7 @@ class TestSymbolicComputation:
 
         return
 
-    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC3")
+    @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_predict_replicate(self):
         t = numpy.linspace(0, 1, 5)
         model = _mini_model()

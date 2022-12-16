@@ -8,32 +8,29 @@ import numpy
 from typing_extensions import TypeAlias
 
 try:
-    # Aesara
-    import aesara as _backend
-    import aesara.tensor as at
-    from aesara.graph.basic import Apply, Variable
-    from aesara.graph.op import Op
+    # PyTensor
+    import pytensor as _backend
+    import pytensor.tensor as pt
+    from pytensor.graph.basic import Apply, Variable
+    from pytensor.graph.op import Op
 except ModuleNotFoundError:
-    # Aesara is not available
+    # PyTensor is not available
     try:
-        # Theano-PyMC 1.1.2
-        import theano as _backend
-        import theano.tensor as at
-        from theano.graph.basic import Apply, Variable
-        from theano.graph.op import Op
+        # Aesara
+        import aesara as _backend
+        import aesara.tensor as pt
+        from aesara.graph.basic import Apply, Variable
+        from aesara.graph.op import Op
     except ModuleNotFoundError:
-        _backend = calibr8.utils.ImportWarner("aesara")
-        at = calibr8.utils.ImportWarner("aesara")
+        _backend = calibr8.utils.ImportWarner("pytensor")
+        pt = calibr8.utils.ImportWarner("pytensor")
         Op = object
         Apply: TypeAlias = Any
         Variable: TypeAlias = Any
 
 
 try:
-    try:
-        import pymc as pm
-    except ModuleNotFoundError:
-        import pymc3 as pm
+    import pymc as pm
 except ModuleNotFoundError:
     pm = calibr8.utils.ImportWarner("pymc")
 
@@ -70,7 +67,7 @@ def make_hashable(obj):
 
 
 class IntegrationOp(Op):
-    """This is a theano Op that becomes a node in the computation graph.
+    """This is a PyTensor Op that becomes a node in the computation graph.
     It is not differentiable, because it uses a 'solver' function that is provided by the user.
     """
 
@@ -86,14 +83,14 @@ class IntegrationOp(Op):
         return hash(subhashes)
 
     def make_node(self, y0: list, t, theta: list):
-        # NOTE: theano does not allow a list of tensors to be one of the inputs
-        #       that's why they have to be at.stack()ed which also merges them into one dtype!
+        # NOTE: PyTensor does not allow a list of tensors to be one of the inputs
+        #       that's why they have to be pt.stack()ed which also merges them into one dtype!
         # TODO: check dtypes and raise warnings
-        y0 = at.stack([at.as_tensor_variable(y) for y in y0])
-        theta = at.stack([at.as_tensor_variable(var) for var in theta])
-        t = at.as_tensor_variable(t)
+        y0 = pt.stack([pt.as_tensor_variable(y) for y in y0])
+        theta = pt.stack([pt.as_tensor_variable(var) for var in theta])
+        t = pt.as_tensor_variable(t)
         apply_node = Apply(
-            self, [y0, t, theta], [at.dmatrix()]  # symbolic inputs: y0 and theta
+            self, [y0, t, theta], [pt.dmatrix()]  # symbolic inputs: y0 and theta
         )  # symbolic outputs: Y_hat
         # NOTE: to support multiple different dtypes as transient variables, the
         #       output type would have to be a list of dvector/svectors.
