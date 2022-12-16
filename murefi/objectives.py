@@ -5,7 +5,7 @@ import numpy
 
 from . import symbolic
 from .core import ParameterMapping
-from .datastructures import Dataset, Replicate, Timeseries
+from .datastructures import Dataset
 from .ode import BaseODEModel
 
 
@@ -56,7 +56,7 @@ def for_dataset(
                 L.append(ll)
 
         if is_symbolic:
-            return symbolic.at.sum(L)
+            return symbolic.pt.sum(L)
         else:
             L = numpy.sum(L)
             if numpy.isnan(L):

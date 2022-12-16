@@ -1,4 +1,4 @@
-calibr8>=6.5.2
+calibr8>=7.0.0
 h5py
 numpy
 pandas

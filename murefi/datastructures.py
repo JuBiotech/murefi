@@ -1,7 +1,6 @@
 import collections
 import logging
 import typing
-import warnings
 
 import calibr8
 import h5py

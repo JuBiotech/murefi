@@ -3,8 +3,6 @@ import logging
 import typing
 import warnings
 
-import calibr8
-import numpy
 import pandas
 
 from .datastructures import ShapeError
@@ -55,7 +53,7 @@ class ParameterMapping(object):
         Keys are in the form f"{pkind}_dim" to avoid conflicting with
         random variable names (see https://github.com/arviz-devs/arviz/issues/1642).
 
-        This dictionary can be used with pymc3.Model(coords=coords) to ease creation
+        This dictionary can be used with pymc.Model(coords=coords) to ease creation
         of vector-shaped priors.
         """
         raw_coords = {pkind: [] for pkind in self.order}

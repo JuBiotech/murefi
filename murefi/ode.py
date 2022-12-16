@@ -131,7 +131,7 @@ class BaseODEModel(object):
                 being a concatenation of y0 and ode_parameters.
 
                 Symbolic prediction requires a (n_parameters,) parameter vector of type {tuple, list, numpy.ndarray}.
-                Elements may be a mix of scalars and Theano tensor variables.
+                Elements may be a mix of scalars and PyTensor tensor variables.
 
                 Prediction of distributions requires a (n_parameters,) parameter vector of type {tuple, list, numpy.ndarray}.
                 Elements may be a mix of scalars and vectors, as long as all vectors have the same length.
