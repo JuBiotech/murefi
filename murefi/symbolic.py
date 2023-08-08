@@ -15,18 +15,11 @@ try:
     from pytensor.graph.op import Op
 except ModuleNotFoundError:
     # PyTensor is not available
-    try:
-        # Aesara
-        import aesara as _backend
-        import aesara.tensor as pt
-        from aesara.graph.basic import Apply, Variable
-        from aesara.graph.op import Op
-    except ModuleNotFoundError:
-        _backend = calibr8.utils.ImportWarner("pytensor")
-        pt = calibr8.utils.ImportWarner("pytensor")
-        Op = object
-        Apply: TypeAlias = Any
-        Variable: TypeAlias = Any
+    _backend = calibr8.utils.ImportWarner("pytensor")
+    pt = calibr8.utils.ImportWarner("pytensor")
+    Op = object
+    Apply: TypeAlias = Any
+    Variable: TypeAlias = Any
 
 
 try:
@@ -37,7 +30,7 @@ except ModuleNotFoundError:
 
 try:
     import sunode
-    from sunode.wrappers import as_aesara
+    from sunode.wrappers import as_pytensor
 
     HAS_SUNODE = True
 except ModuleNotFoundError:
@@ -151,7 +144,7 @@ def solve_sunode(
     y0 = named_with_shapes_dict(y0, independent_keys)
     params = named_with_shapes_dict(ode_parameters, parameter_names)
     params["extra"] = numpy.zeros(1)
-    solution, *_ = as_aesara.solve_ivp(
+    solution, *_ = as_pytensor.solve_ivp(
         y0=y0,
         params=params,
         rhs=dydt_dict,
