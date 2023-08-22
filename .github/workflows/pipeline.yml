@@ -40,7 +40,7 @@ jobs:
     - name: Install and test with sunode
       if: matrix.pymc-version != 'without'
       run : |
-        conda install -c conda-forge sunode
+        conda install -c conda-forge "sunode>=0.5.0"
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Upload coverage
       uses: codecov/codecov-action@v2
