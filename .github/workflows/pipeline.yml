@@ -11,11 +11,11 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        pymc-version: ["without", "'pymc>=4.0.0,<5'", "'pymc>=5.0.0'"]
+        pymc-version: ["without", "'pymc>=5.0.0'"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4.3.1
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -40,7 +40,7 @@ jobs:
     - name: Install and test with sunode
       if: matrix.pymc-version != 'without'
       run : |
-        conda install -c conda-forge sunode
+        conda install -c conda-forge "sunode>=0.5.0"
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Upload coverage
       uses: codecov/codecov-action@v2
