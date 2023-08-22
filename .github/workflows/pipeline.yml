@@ -43,7 +43,7 @@ jobs:
         conda install -c conda-forge "sunode>=0.5.0"
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Upload coverage
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       if: matrix.python-version == 3.8
       with:
         file: ./coverage.xml
