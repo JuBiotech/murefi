@@ -12,16 +12,21 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         pymc-version: ["without", "'pymc>=5.0.0'"]
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: mamba-org/setup-micromamba@v1
       with:
-        python-version: ${{ matrix.python-version }}
+        environment-file: environment-dev.yml
+        create-args: >-
+          python=${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        conda activate murefi-env
         pip install -e .
-        pip install -r requirements-dev.txt
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -40,7 +45,7 @@ jobs:
     - name: Install and test with sunode
       if: matrix.pymc-version != 'without'
       run : |
-        conda install -c conda-forge "sunode>=0.5.0"
+        mamba install "sunode>=0.5.0"
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Upload coverage
       uses: codecov/codecov-action@v4
