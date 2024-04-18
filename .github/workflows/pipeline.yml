@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.10", "3.11", "3.12"]
         pymc-version: ["without", "'pymc>=5.0.0'"]
     steps:
     - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
         pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
     - name: Upload coverage
       uses: codecov/codecov-action@v4
-      if: matrix.python-version == 3.8
+      if: matrix.python-version == 3.11
       with:
         file: ./coverage.xml
     - name: Test Wheel install and import
