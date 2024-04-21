@@ -3,4 +3,5 @@ h5py
 numpy
 pandas
 scipy
+setuptools
 typing_extensions
