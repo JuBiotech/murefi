@@ -30,7 +30,7 @@ Note that the paper is a shared first co-authorship, which can be indicated by <
   author    = {Helleckes$^1$, Laura Marie and
                Osthege$^1$, Michael and
                Wiechert, Wolfgang and
-               von Lieres, Eric and
+               {von Lieres}, Eric and
                Oldiges, Marco},
   journal   = {PLOS Computational Biology},
   publisher = {Public Library of Science},
