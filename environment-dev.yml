@@ -1,12 +1,13 @@
 name: murefi-env
 channels:
-- conda-forge
+  - conda-forge
 dependencies:
-- codecov
-- flake8
-- pytest
-- pytest-cov
-- twine
-- wheel
-- pip:
-  - -r requirements.txt
+  - codecov
+  - flake8
+  - pandas>=3.0.0
+  - pytest
+  - pytest-cov
+  - twine
+  - wheel
+  - pip:
+    - -r requirements.txt
