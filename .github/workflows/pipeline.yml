@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.14"]
         pymc-version: ["without", "'pymc>=5.0.0'"]
     defaults:
       run:
@@ -36,25 +36,24 @@ jobs:
     - name: Test without PyMC
       if: matrix.pymc-version == 'without'
       run: |
-        pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
+        pytest -v --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/test_core.py
     - name: Install and test with PyMC
       if: matrix.pymc-version != 'without'
       run: |
         pip install ${{ matrix.pymc-version }}
-        pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
+        pytest -v --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/test_core.py
     - name: Install and test with sunode
       if: matrix.pymc-version != 'without'
       run : |
         mamba install "sunode>=0.5.0"
-        pytest --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/tests.py
+        pytest -v --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/test_core.py
     - name: Upload coverage
       uses: codecov/codecov-action@v5
-      if: matrix.python-version == 3.11
       with:
         file: ./coverage.xml
     - name: Test Wheel install and import
       run: |
-        python setup.py bdist_wheel
+        python -m build
         cd dist
         pip install murefi*.whl
         python -c "import murefi; print(murefi.__version__)"

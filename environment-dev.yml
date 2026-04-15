@@ -8,6 +8,5 @@ dependencies:
   - pytest
   - pytest-cov
   - twine
-  - wheel
   - pip:
-    - -r requirements.txt
+    - build
