@@ -167,7 +167,7 @@ class Replicate(collections.OrderedDict):
         t_any = self.t_any
         for yi, tskey in enumerate(keys_y):
             if tskey in self:
-                t_bmask[tskey] = numpy.in1d(t_any, self[tskey].t)
+                t_bmask[tskey] = numpy.isin(t_any, self[tskey].t)
             else:
                 t_bmask[tskey] = numpy.repeat(False, len(t_any))
         return t_bmask
