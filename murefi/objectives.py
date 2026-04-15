@@ -51,7 +51,7 @@ def for_dataset(
             for (cm, observed_ts) in em_ts_list:
                 predicted_ts = predicted_replicate[cm.dependent_key]
                 ll = cm.loglikelihood(
-                    y=observed_ts.y, x=predicted_ts.y, replicate_id=rid, dependent_key=cm.dependent_key
+                    y=observed_ts.y, x=predicted_ts.y, name=f"{rid}.{cm.dependent_key}"
                 ).sum()
                 L.append(ll)
 
