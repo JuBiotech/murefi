@@ -17,3 +17,4 @@ murefi/examples/Sandbox.ipynb
 *.h5
 /docs/build*
 /notebooks/*.png
+dist/*
