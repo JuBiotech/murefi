@@ -48,7 +48,7 @@ jobs:
         mamba install "sunode>=0.5.0"
         pytest -v --cov=./murefi --cov-append --cov-report xml --cov-report term-missing murefi/test_core.py
     - name: Upload coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         file: ./coverage.xml
     - name: Test Wheel install and import
