@@ -799,10 +799,9 @@ class TestSymbolicComputation:
     @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_timeseries_support(self):
         t = numpy.linspace(0, 10, 10)
-        with _backend.config.change_flags(compute_test_value="off"):
-            y = pt.scalar("TestY", dtype=_backend.config.floatX)
-            assert isinstance(y, pt.TensorVariable)
-            ts = murefi.Timeseries(t, y, independent_key="Test", dependent_key="Test")
+        y = pt.scalar("TestY", dtype=_backend.config.floatX)
+        assert isinstance(y, pt.TensorVariable)
+        ts = murefi.Timeseries(t, y, independent_key="Test", dependent_key="Test")
         return
 
     @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
@@ -814,131 +813,128 @@ class TestSymbolicComputation:
         )
 
         # create a theta that is a mix of constant and symbolic variables
-        with _backend.config.change_flags(compute_test_value="off"):
-            theta_fitted = [
-                1,
-                pt.scalar("mu_max", dtype=_backend.config.floatX),
-                13,
-                pt.scalar("t_acc", dtype=_backend.config.floatX),
-            ]
+        theta_fitted = [
+            1,
+            pt.scalar("mu_max", dtype=_backend.config.floatX),
+            13,
+            pt.scalar("t_acc", dtype=_backend.config.floatX),
+        ]
 
-            # map it to the two replicates
-            expected = {
-                "A01": numpy.array([1.0, None, 3.0, 4.0, 5.0, 6.0, 7.0]),
-                "B02": numpy.array([11.0, None, 13.0, None, 15.0, 16.0, 17.0]),
-            }
-            mapped = parmap.repmap(theta_fitted)
-            assert mapped.keys() == expected.keys()
-            for rid in expected.keys():
-                for exp, act in zip(expected[rid], mapped[rid]):
-                    if exp is not None:
-                        assert exp == act
-                    else:
-                        assert isinstance(act, pt.TensorVariable)
+        # map it to the two replicates
+        expected = {
+            "A01": numpy.array([1.0, None, 3.0, 4.0, 5.0, 6.0, 7.0]),
+            "B02": numpy.array([11.0, None, 13.0, None, 15.0, 16.0, 17.0]),
+        }
+        mapped = parmap.repmap(theta_fitted)
+        assert mapped.keys() == expected.keys()
+        for rid in expected.keys():
+            for exp, act in zip(expected[rid], mapped[rid]):
+                if exp is not None:
+                    assert exp == act
+                else:
+                    assert isinstance(act, pt.TensorVariable)
         return
 
     @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_symbolic_predict_replicate(self):
-        with _backend.config.change_flags(compute_test_value="off"):
-            inputs = [
-                pt.scalar("beta", dtype=_backend.config.floatX),
-                pt.scalar("A", dtype=_backend.config.floatX),
-            ]
-            ode_parameters = [0.23, inputs[0]]
-            y0 = [inputs[1], 2.0, 0.0]
-            t = numpy.linspace(0, 1, 5)
-            model = _mini_model()
+        inputs = [
+            pt.scalar("beta", dtype=_backend.config.floatX),
+            pt.scalar("A", dtype=_backend.config.floatX),
+        ]
+        ode_parameters = [0.23, inputs[0]]
+        y0 = [inputs[1], 2.0, 0.0]
+        t = numpy.linspace(0, 1, 5)
+        model = _mini_model()
 
-            template = murefi.Replicate("TestRep")
-            # one observation of A, two observations of C
-            template["A"] = murefi.Timeseries(t[:3], [0] * 3, independent_key="A", dependent_key="A")
-            template["C1"] = murefi.Timeseries(t[2:4], [0] * 2, independent_key="C", dependent_key="C1")
-            template["C2"] = murefi.Timeseries(t[1:4], [0] * 3, independent_key="C", dependent_key="C2")
+        template = murefi.Replicate("TestRep")
+        # one observation of A, two observations of C
+        template["A"] = murefi.Timeseries(t[:3], [0] * 3, independent_key="A", dependent_key="A")
+        template["C1"] = murefi.Timeseries(t[2:4], [0] * 2, independent_key="C", dependent_key="C1")
+        template["C2"] = murefi.Timeseries(t[1:4], [0] * 3, independent_key="C", dependent_key="C2")
 
-            # construct the symbolic computation graph
-            prediction = model.predict_replicate(y0 + ode_parameters, template)
+        # construct the symbolic computation graph
+        prediction = model.predict_replicate(y0 + ode_parameters, template)
 
-            assert isinstance(prediction, murefi.Replicate)
-            assert prediction.rid == "TestRep"
-            assert "A" in prediction
-            assert "B" not in prediction
-            assert "C1" in prediction
-            assert "C2" in prediction
+        assert isinstance(prediction, murefi.Replicate)
+        assert prediction.rid == "TestRep"
+        assert "A" in prediction
+        assert "B" not in prediction
+        assert "C1" in prediction
+        assert "C2" in prediction
 
-            assert isinstance(prediction["A"].y, pt.TensorVariable)
-            assert isinstance(prediction["C1"].y, pt.TensorVariable)
-            assert isinstance(prediction["C2"].y, pt.TensorVariable)
+        assert isinstance(prediction["A"].y, pt.TensorVariable)
+        assert isinstance(prediction["C1"].y, pt.TensorVariable)
+        assert isinstance(prediction["C2"].y, pt.TensorVariable)
 
-            outputs = [prediction["A"].y, prediction["C1"].y, prediction["C2"].y]
+        outputs = [prediction["A"].y, prediction["C1"].y, prediction["C2"].y]
 
-            # compile a PyTensor function for performing the computation
-            f = _backend.function(inputs, outputs)
+        # compile a PyTensor function for performing the computation
+        f = _backend.function(inputs, outputs)
 
-            # compute the model outcome
-            actual = f(0.85, 2.0)
+        # compute the model outcome
+        actual = f(0.85, 2.0)
 
-            assert numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046])
-            assert numpy.allclose(actual[1], [0.71677954, 0.83004323])
-            assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
+        assert numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046])
+        assert numpy.allclose(actual[1], [0.71677954, 0.83004323])
+        assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
 
     @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")
     def test_symbolic_predict_dataset(self):
-        with _backend.config.change_flags(compute_test_value="off"):
-            inputs = [
-                pt.scalar("beta", dtype=_backend.config.floatX),
-                pt.scalar("A", dtype=_backend.config.floatX),
-            ]
-            ode_parameters = [0.23, inputs[0]]
-            y0 = [inputs[1], 2.0, 0.0]
-            t = numpy.linspace(0, 1, 5)
-            model = _mini_model()
+        inputs = [
+            pt.scalar("beta", dtype=_backend.config.floatX),
+            pt.scalar("A", dtype=_backend.config.floatX),
+        ]
+        ode_parameters = [0.23, inputs[0]]
+        y0 = [inputs[1], 2.0, 0.0]
+        t = numpy.linspace(0, 1, 5)
+        model = _mini_model()
 
-            # create a parameter mapping
-            mapping = pandas.DataFrame(columns="rid,A0,B0,C0,alpha,beta".split(",")).set_index("rid")
-            mapping.loc["TestRep"] = "A0,B0,C0,alpha,beta".split(",")
-            pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
-            assert pmap.ndim == 5
-            numpy.testing.assert_array_equal(tuple(pmap.parameters.keys()), "A0,B0,C0,alpha,beta".split(","))
+        # create a parameter mapping
+        mapping = pandas.DataFrame(columns="rid,A0,B0,C0,alpha,beta".split(",")).set_index("rid")
+        mapping.loc["TestRep"] = "A0,B0,C0,alpha,beta".split(",")
+        pmap = murefi.ParameterMapping(mapping, bounds=dict(), guesses=dict())
+        assert pmap.ndim == 5
+        numpy.testing.assert_array_equal(tuple(pmap.parameters.keys()), "A0,B0,C0,alpha,beta".split(","))
 
-            # create a dataset
-            ds_template = murefi.Dataset()
+        # create a dataset
+        ds_template = murefi.Dataset()
 
-            # One replicate with one observation of A, two observations of C
-            template = murefi.Replicate("TestRep")
-            template["A"] = murefi.Timeseries(t[:3], [0] * 3, independent_key="A", dependent_key="A")
-            template["C1"] = murefi.Timeseries(t[2:4], [0] * 2, independent_key="C", dependent_key="C1")
-            template["C2"] = murefi.Timeseries(t[1:4], [0] * 3, independent_key="C", dependent_key="C2")
-            ds_template["TestRep"] = template
+        # One replicate with one observation of A, two observations of C
+        template = murefi.Replicate("TestRep")
+        template["A"] = murefi.Timeseries(t[:3], [0] * 3, independent_key="A", dependent_key="A")
+        template["C1"] = murefi.Timeseries(t[2:4], [0] * 2, independent_key="C", dependent_key="C1")
+        template["C2"] = murefi.Timeseries(t[1:4], [0] * 3, independent_key="C", dependent_key="C2")
+        ds_template["TestRep"] = template
 
-            # construct the symbolic computation graph
-            prediction = model.predict_dataset(ds_template, pmap, parameters=y0 + ode_parameters)
+        # construct the symbolic computation graph
+        prediction = model.predict_dataset(ds_template, pmap, parameters=y0 + ode_parameters)
 
-            assert isinstance(prediction, murefi.Dataset)
-            assert "A" in prediction["TestRep"]
-            assert "B" not in prediction["TestRep"]
-            assert "C1" in prediction["TestRep"]
-            assert "C2" in prediction["TestRep"]
+        assert isinstance(prediction, murefi.Dataset)
+        assert "A" in prediction["TestRep"]
+        assert "B" not in prediction["TestRep"]
+        assert "C1" in prediction["TestRep"]
+        assert "C2" in prediction["TestRep"]
 
-            assert isinstance(prediction["TestRep"]["A"].y, pt.TensorVariable)
-            assert isinstance(prediction["TestRep"]["C1"].y, pt.TensorVariable)
-            assert isinstance(prediction["TestRep"]["C2"].y, pt.TensorVariable)
+        assert isinstance(prediction["TestRep"]["A"].y, pt.TensorVariable)
+        assert isinstance(prediction["TestRep"]["C1"].y, pt.TensorVariable)
+        assert isinstance(prediction["TestRep"]["C2"].y, pt.TensorVariable)
 
-            outputs = [
-                prediction["TestRep"]["A"].y,
-                prediction["TestRep"]["C1"].y,
-                prediction["TestRep"]["C2"].y,
-            ]
+        outputs = [
+            prediction["TestRep"]["A"].y,
+            prediction["TestRep"]["C1"].y,
+            prediction["TestRep"]["C2"].y,
+        ]
 
-            # compile a PyTensor function for performing the computation
-            f = _backend.function(inputs, outputs)
+        # compile a PyTensor function for performing the computation
+        f = _backend.function(inputs, outputs)
 
-            # compute the model outcome
-            actual = f(0.85, 2.0)
+        # compute the model outcome
+        actual = f(0.85, 2.0)
 
-            assert numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046])
-            assert numpy.allclose(actual[1], [0.71677954, 0.83004323])
-            assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
+        assert numpy.allclose(actual[0], [2.0, 1.4819299, 1.28322046])
+        assert numpy.allclose(actual[1], [0.71677954, 0.83004323])
+        assert numpy.allclose(actual[2], [0.5180701, 0.71677954, 0.83004323])
         return
 
     @pytest.mark.skipif(not HAS_PYMC, reason="requires PyMC")

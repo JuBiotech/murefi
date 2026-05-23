@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.14"]
-        pymc-version: ["without", "'pymc>=5.0.0'"]
+        pymc-version: ["without", "'pymc>=6.0.0'"]
     defaults:
       run:
         shell: bash -l {0}
